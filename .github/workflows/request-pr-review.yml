@@ -1,0 +1,17 @@
+# 각 레포지토리의 .github/workflows/request-pr-review.yml
+
+name: PR Assignee & Team Review Request
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+jobs:
+  call-reusable-workflow:
+    uses: 33-Auto/.github/.github/workflows/reusable-pr-assign-and-review.yml@main
+    with:
+      team-slug-for-review: "review_avengers" # 여기에 리뷰를 요청할 팀의 slug를 입력합니다.
+      pr-author: ${{ github.event.pull_request.user.login }}
+      pr-number: ${{ github.event.pull_request.number }}
+    secrets:
+      ORGANIZATION_TOKEN: ${{ secrets.ORGANIZATION_TOKEN }} # 재사용 워크플로우가 ORGANIZATION_TOKEN을 사용할 수 있도록 전달

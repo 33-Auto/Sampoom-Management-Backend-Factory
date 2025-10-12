@@ -1,0 +1,14 @@
+# 각 레포지토리의 .github/workflows/assign-issue-creator.yml
+
+name: Assign issue creator
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  call-reusable-workflow:
+    # @main 은 .github 레포지토리의 main 브랜치를 사용한다는 의미입니다. 버전을 위해 @v1과 같이 태그를 사용하는 것을 권장합니다.
+    uses: 33-Auto/.github/.github/workflows/reusable-assign-issue-creator.yml@main
+    # 이 워크플로우는 secrets를 전달할 필요가 없지만, 필요 시 아래와 같이 전달합니다.
+    # secrets: inherit
