@@ -683,4 +683,6 @@ gradle-app.setting
 
 .idea
 
+application.properties
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,linux,visualstudiocode,jetbrains,intellij,node,java,gradle,maven,python,go
