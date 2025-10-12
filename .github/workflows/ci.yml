@@ -1,0 +1,87 @@
+name: CI (use Gradle version)
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push-factory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: chmod +x ./gradlew
+
+      # (윈도우에서 커밋된 Dockerfile 문제 방지)
+      - name: Normalize Dockerfile (strip BOM, CRLF→LF)
+        run: |
+          sed -i '1s/^\xEF\xBB\xBF//' Dockerfile || true
+          if command -v dos2unix >/dev/null 2>&1; then
+            dos2unix Dockerfile
+          else
+            perl -pi -e 's/\r\n/\n/g' Dockerfile
+          fi
+          
+      - name: Create application.properties from secret
+        run: |
+          mkdir -p src/main/resources
+          echo "${{ secrets.APP_PROPS_FACTORY }}" > src/main/resources/application.properties
+
+      - name: Build factory jar
+        run: ./gradlew clean bootJar -x test -Dspring.profiles.active=ci
+
+      # Gradle의 version 값을 읽어옴 (예: 1.0.0 또는 1.0.0-SNAPSHOT)
+      - name: Read version from Gradle
+        id: ver
+        run: echo "VERSION=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Set image tags
+        id: vars
+        run: |
+          IMAGE="hysungzzang/sampoom"
+          VER="${{ steps.ver.outputs.VERSION }}"
+          echo "IMAGE=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "TAG_VERSION=factory-${VER}" >> $GITHUB_OUTPUT
+          echo "TAG_LATEST=factory-latest" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          driver-opts: |
+            network=host
+
+      - name: Build & Push (factory)
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        env:
+          BUILDKIT_PROGRESS: plain
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          no-cache: true
+          provenance: false
+          tags: |
+            ${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_VERSION }}
+            ${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_LATEST }}
+            
