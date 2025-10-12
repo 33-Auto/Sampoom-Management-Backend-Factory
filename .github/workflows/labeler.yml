@@ -1,0 +1,18 @@
+name: Label on Approval Count
+
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+jobs:
+  call-reusable-labeler:
+    uses: 33-Auto/.github/.github/workflows/reusable-label-on-approve.yml@main
+
+    # with 키워드를 사용하여 input 값을 전달
+    with:
+      # github.event.pull_request.number를 통해 현재 PR 번호를 전달
+      pr-number: ${{ github.event.pull_request.number }}
+
+    secrets:
+      # ORGANIZATION_TOKEN 전달
+      ORGANIZATION_TOKEN: ${{ secrets.ORGANIZATION_TOKEN }}
