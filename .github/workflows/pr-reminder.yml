@@ -2,7 +2,7 @@ name: PR Reminder
 
 on:
   schedule:
-    - cron: "0 9,14,17 * * *" # 아침 9시, 오후 2시, 오후 5시에 실행
+    - cron: "0 0,5,8 * * *" # 아침 9시, 오후 2시, 오후 5시에 실행 (UTC 기준으로 설정해서 한국 시간에 맞춤)
   workflow_dispatch:
 
 jobs:
