@@ -19,7 +19,7 @@ import java.util.List;
 
 @Tag(name = "FactoryMaterial", description = "FactoryMaterial 관련 API 입니다.")
 @RestController
-@RequestMapping("/api/factory")
+@RequestMapping()
 @RequiredArgsConstructor
 public class FactoryMaterialController {
 
