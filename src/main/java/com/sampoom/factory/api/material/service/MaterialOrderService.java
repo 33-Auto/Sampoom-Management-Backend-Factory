@@ -58,7 +58,7 @@ public class MaterialOrderService {
 
                     return MaterialOrderItem.builder()
                             .materialOrder(order)
-                            .materialId(item.getMaterialId())
+                            .material(material)
                             .quantity(item.getQuantity())
                             .build();
                 })
@@ -111,17 +111,17 @@ public class MaterialOrderService {
 
         // 각 주문 아이템에 대해 공장 자재 수량 증가
         for (MaterialOrderItem item : items) {
-            Long materialId = item.getMaterialId();
+            Material material = item.getMaterial();
             Long quantity = item.getQuantity();
 
             // 해당 공장의 자재 찾기
             FactoryMaterial factoryMaterial = factoryMaterialRepository.findByFactoryIdAndMaterialId(
-                            factoryId, materialId)
+                            factoryId, material.getId())
                     .orElseGet(() -> {
                         // 없으면 새로 생성
                         FactoryMaterial newMaterial = FactoryMaterial.builder()
                                 .factory(order.getFactory())
-                                .materialId(materialId)
+                                .material(material)
                                 .quantity(0L)
                                 .build();
                         return factoryMaterialRepository.save(newMaterial);

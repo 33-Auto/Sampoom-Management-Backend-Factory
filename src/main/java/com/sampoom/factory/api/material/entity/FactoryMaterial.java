@@ -24,12 +24,10 @@ public class FactoryMaterial {
     @JoinColumn(name = "factory_id")
     private Factory factory;
 
-    @Column(name = "material_id", nullable = false)
-    private Long materialId;   // 실제 DB에 저장되는 FK 값
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "material_id", insertable = false, updatable = false)
-    private Material material; // 읽기 전용 뷰
+    @JoinColumn(name = "material_id")
+    private Material material;
 
     private Long quantity;
 

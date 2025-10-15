@@ -34,12 +34,11 @@ public class MaterialOrder {
     @JoinColumn(name = "factory_id")
     private Factory factory;
 
-    public MaterialOrder receive() {
+    public void receive() {
         if (this.status != OrderStatus.ORDERED) {
             throw new BadRequestException(ErrorStatus.ORDER_ALREADY_PROCESSED);
         }
         this.status = OrderStatus.RECEIVED;
         this.receivedAt = LocalDateTime.now();
-        return this;
     }
 }
