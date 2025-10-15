@@ -7,6 +7,7 @@ import com.sampoom.factory.common.response.ApiResponse;
 import com.sampoom.factory.common.response.SuccessStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,7 @@ public class FactoryController {
 
     @Operation(summary = "공장 생성", description = "공장을 생성합니다.")
     @PostMapping
-    public ResponseEntity<ApiResponse<FactoryResponseDto>> createFactory(@RequestBody FactoryCreateRequestDto requestDto) {
+    public ResponseEntity<ApiResponse<FactoryResponseDto>> createFactory(@Valid @RequestBody FactoryCreateRequestDto requestDto) {
         FactoryResponseDto responseDto = factoryService.createFactory(requestDto);
         return ApiResponse.success(SuccessStatus.CREATED,responseDto);
     }
