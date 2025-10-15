@@ -1,17 +1,14 @@
 package com.sampoom.factory.api.material.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.Immutable;
 
 @Entity
 @Table(name = "material")
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Immutable
 public class Material {
 
     @Id
@@ -19,10 +16,10 @@ public class Material {
     @Column(name = "material_id")
     private Long id;
 
-    @Column(name = "material_name")
+    @Column(name = "material_name", nullable = false)
     private String name;
 
-    @Column(name = "material_code")
+    @Column(name = "material_code", nullable = false)
     private String code;
 
     @ManyToOne(fetch = FetchType.LAZY)
