@@ -20,7 +20,7 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI openAPI() {
         Server localServer = new Server()
-                .url("http://localhost:8080/api/factory")
+                .url("http://localhost:8080/")
                 .description("로컬 서버");
 
         Server prodServer = new Server()
@@ -32,7 +32,7 @@ public class SwaggerConfig {
                         .title("삼삼오토 Factory Service API")
                         .description("Factory 서비스 REST API 문서")
                         .version("1.0.0"))
-                .servers(List.of(localServer, prodServer));
+                .servers(List.of( prodServer,localServer));
     }
 
 //    @Bean
