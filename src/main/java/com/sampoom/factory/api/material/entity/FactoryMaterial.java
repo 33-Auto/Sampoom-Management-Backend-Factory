@@ -2,15 +2,12 @@ package com.sampoom.factory.api.material.entity;
 
 import com.sampoom.factory.api.factory.entity.Factory;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name = "factory_material")
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class FactoryMaterial {
