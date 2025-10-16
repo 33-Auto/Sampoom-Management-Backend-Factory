@@ -29,6 +29,8 @@ public enum ErrorStatus {
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다.", 40403),
     FACTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "공장을 찾을 수 없습니다.", 40404),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다.", 40405),
+    PART_NOT_FOUND(HttpStatus.NOT_FOUND, "부품을 찾을 수 없습니다.", 40406),
+    BOM_NOT_FOUND(HttpStatus.NOT_FOUND, "BOM을 찾을 수 없습니다.", 40407),
 
 
 

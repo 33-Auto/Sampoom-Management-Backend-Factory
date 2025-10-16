@@ -68,7 +68,7 @@ class FactoryServiceTest {
             assertThat(fm.getFactory().getId()).isEqualTo(1L);
             assertThat(fm.getQuantity()).isZero();
         });
-        assertThat(saved.stream().map(FactoryMaterial::getMaterialId))
+        assertThat(saved.stream().map(FactoryMaterial::getMaterial).map(Material::getId).toList())
                 .containsExactlyInAnyOrder(1L, 2L);
     }
 }

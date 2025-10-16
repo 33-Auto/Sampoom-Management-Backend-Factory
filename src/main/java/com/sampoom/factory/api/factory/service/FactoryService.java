@@ -35,7 +35,7 @@ public class FactoryService {
         for (Material material : allMaterials) {
             FactoryMaterial factoryMaterial = FactoryMaterial.builder()
                     .factory(factory)
-                    .materialId(material.getId())
+                    .material(material)
                     .quantity(0L)
                     .build();
 
