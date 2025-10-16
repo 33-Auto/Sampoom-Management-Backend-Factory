@@ -7,10 +7,10 @@ on:
 
 jobs:
   call-reusable-reminder:
-    secrets: inherit
     uses: 33-Auto/.github/.github/workflows/reusable-pr-reminder.yml@main
-    with:
-      # 시크릿 전달
+    
+    secrets:
+      # 조직 시크릿을 secrets 입력으로 전달
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      # 변수 전달
+      # 조직 변수를 secrets 입력으로 전달
       SLACK_USER_MAP: ${{ vars.SLACK_USER_MAP }}
