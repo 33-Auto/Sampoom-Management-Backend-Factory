@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,4 +87,39 @@ public class FactoryMaterialService {
                 .totalPages(factoryMaterialsPage.getTotalPages())
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<MaterialResponseDto> searchMaterials(
+            Long factoryId,
+            Long categoryId,
+            String keyword,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<FactoryMaterial> fmPage;
+        if (keyword == null || keyword.isBlank()) {
+            fmPage = factoryMaterialRepository.findByFactoryAndCategory(
+                    factoryId, categoryId, pageable);
+        } else {
+            fmPage = factoryMaterialRepository.findByFactoryCategoryAndKeyword(
+                    factoryId, categoryId, keyword, pageable);
+        }
+        List<MaterialResponseDto> content = fmPage.getContent().stream()
+                .map(factoryMaterial -> {
+                    Material material = factoryMaterial.getMaterial();
+                    return MaterialResponseDto.from(material)
+                            .withQuantity(factoryMaterial.getQuantity());
+                })
+                .collect(Collectors.toList());
+
+        return PageResponseDto.<MaterialResponseDto>builder()
+                .content(content)
+                .totalElements(fmPage.getTotalElements())
+                .totalPages(fmPage.getTotalPages())
+                .build();
+    }
+
+
 }

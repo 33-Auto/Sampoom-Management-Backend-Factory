@@ -43,14 +43,23 @@ public class FactoryMaterialController {
                 factoryMaterialService.getMaterialsByFactoryAndCategory(factoryId, categoryId, page, size));
     }
 
-    @Operation(summary = "공장별 자재 목록 조회", description = "특정 공장에 있는 모든 자재를 조회합니다.")
+
+    @Operation(
+            summary = "공장별 자재 검색/목록 조회",
+            description = "특정 공장의 자재를 페이징 조회합니다. 카테고리(categoryId)로 필터링하고, keyword(자재명/자재코드)로 검색합니다."
+    )
     @GetMapping("/{factoryId}/material")
-    public ResponseEntity<ApiResponse<PageResponseDto<MaterialResponseDto>>> getMaterialsByFactory(
+    public ResponseEntity<ApiResponse<PageResponseDto<MaterialResponseDto>>> getMaterials(
             @PathVariable Long factoryId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.success(SuccessStatus.OK,
-                factoryMaterialService.getMaterialsByFactoryId(factoryId, page, size));
+
+        return ApiResponse.success(
+                SuccessStatus.OK,
+                factoryMaterialService.searchMaterials(factoryId, categoryId, keyword, page, size)
+        );
     }
 
     @Operation(summary = "자재 주문 생성", description = "공장에 필요한 자재 주문을 생성합니다.")
@@ -79,5 +88,28 @@ public class FactoryMaterialController {
             @PathVariable Long orderId) {
         return ApiResponse.success(SuccessStatus.OK,
                 materialOrderService.receiveMaterialOrder(factoryId, orderId));
+    }
+
+    @Operation(
+            summary = "자재 주문 취소",
+            description = "특정 공장의 자재 주문을 취소합니다. (받은(입고) 주문은 취소 불가)"
+    )
+    @PutMapping("/{factoryId}/material/order/{orderId}/cancel")
+    public ResponseEntity<ApiResponse<MaterialOrderResponseDto>> cancelMaterialOrder(
+            @PathVariable Long factoryId,
+            @PathVariable Long orderId) {
+
+        return ApiResponse.success(
+                SuccessStatus.OK,
+                materialOrderService.cancelMaterialOrder(factoryId, orderId)
+        );
+    }
+
+    @Operation(summary = "자재 주문 삭제(소프트)", description = "주문 레코드를 실제로는 삭제하지 않고 숨깁니다.")
+    @DeleteMapping("/{factoryId}/material/order/{orderId}")
+    public ResponseEntity<ApiResponse<Void>> deleteMaterialOrder(
+            @PathVariable Long factoryId, @PathVariable Long orderId) {
+        materialOrderService.softDeleteMaterialOrder(factoryId, orderId);
+        return ApiResponse.success_only(SuccessStatus.OK);
     }
 }

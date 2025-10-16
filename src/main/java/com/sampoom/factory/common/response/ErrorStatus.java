@@ -17,6 +17,7 @@ public enum ErrorStatus {
     ORDER_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 주문입니다.",40005),
 
 
+
     // 401 UNAUTHORIZED
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.", 40101),
 
