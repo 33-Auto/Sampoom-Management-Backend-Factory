@@ -23,7 +23,7 @@ public class Bom extends BaseTimeEntity {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_id")
+    @JoinColumn(name = "part_id", unique = true)
     private Part part;
 
     @OneToMany(mappedBy = "bom", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -103,7 +103,6 @@ public class BomService {
             bom.addMaterial(bomMaterial);
         }
         bom.touchNow();
-        bomRepository.save(bom);
 
         return BomResponseDto.from(bom);
     }
