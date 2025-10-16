@@ -13,4 +13,4 @@ jobs:
       # 조직 시크릿을 secrets 입력으로 전달
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       # 조직 변수를 secrets 입력으로 전달
-      SLACK_USER_MAP: ${{ vars.SLACK_USER_MAP }}
+      SLACK_USER_MAP: ${{ secrets.SLACK_USER_MAP }}
