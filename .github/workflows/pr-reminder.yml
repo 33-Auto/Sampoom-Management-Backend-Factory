@@ -11,3 +11,5 @@ jobs:
     secrets:
       # 해당 시크릿은 조직의 시크릿에 저장되어 있음
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # 조직 변수 전달
+      SLACK_USER_MAP: ${{ vars.SLACK_USER_MAP }}
