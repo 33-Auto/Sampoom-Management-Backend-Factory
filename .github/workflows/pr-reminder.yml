@@ -1,14 +1,15 @@
-name: PR Reminder
+  name: PR Reminder
 
-on:
-  schedule:
-    - cron: "47 23,4,7,8,10 * * *" # 아침 8시 47분, 오후 2시 47분, 오후 4시 47분, 오후 5시 47분, 오후 7시 47분 에 실행 (UTC 기준으로 설정해서 한국 시간에 맞춤)
-  workflow_dispatch:
+  on:
+    schedule:
+      - cron: "47 23,4,7,8,10 * * *" # 아침 8시 47분, 오후 2시 47분, 오후 4시 47분, 오후 5시 47분, 오후 7시 47분 에 실행 (UTC 기준으로 설정해서 한국 시간에 맞춤)
+    workflow_dispatch:
 
-jobs:
-  call-reusable-reminder:
-    uses: 33-Auto/.github/.github/workflows/reusable-pr-reminder.yml@main
-    secrets:
-      # 해당 시크릿은 조직의 시크릿에 저장되어 있음
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      SLACK_USER_MAP : ${{ secrets.SLACK_USER_MAP }}
+  jobs:
+    call-reusable-reminder:
+      uses: 33-Auto/.github/.github/workflows/reusable-pr-reminder.yml@main
+      secrets:
+        # 해당 시크릿은 조직의 시크릿에 저장되어 있음
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      with:
+        SLACK_USER_MAP: ${{ vars.SLACK_USER_MAP }}
