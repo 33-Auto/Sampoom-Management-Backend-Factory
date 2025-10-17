@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Trigger infra repo deploy workflow
         uses: peter-evans/repository-dispatch@v3
-        with:w
+        with:
           token: ${{ secrets.ORGANIZATION_TOKEN }}
           # [중요] 아래 repository 값은 모든 앱이 공유하는 '중앙 인프라 리포지토리' 주소이다.
           repository: 33-Auto/Sampoom-Management-Infra
