@@ -31,4 +31,8 @@ public class FactoryMaterial {
     public void increaseQuantity(Long amount) {
         this.quantity += amount;
     }
+
+    public void decreaseQuantity(Long amount) {
+        this.quantity -= amount;
+    }
 }

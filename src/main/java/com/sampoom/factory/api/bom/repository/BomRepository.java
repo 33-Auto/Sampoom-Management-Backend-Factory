@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface BomRepository extends JpaRepository<Bom,Long> {
     @Query("""
 SELECT b FROM Bom b
@@ -28,5 +30,6 @@ ORDER BY b.createdAt DESC
             @Param("groupId") Long groupId,
             Pageable pageable);
 
+    Optional<Bom> findByPart_Id(Long partId);
 
 }
