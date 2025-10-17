@@ -25,3 +25,5 @@ public abstract class BaseTimeEntity {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Seoul")
     protected LocalDateTime updatedAt;
 }
+
+

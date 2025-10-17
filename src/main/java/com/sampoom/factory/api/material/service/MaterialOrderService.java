@@ -133,6 +133,38 @@ public class MaterialOrderService {
         return MaterialOrderResponseDto.from(order, items);
     }
 
+    @Transactional
+    public MaterialOrderResponseDto  cancelMaterialOrder(Long factoryId, Long orderId) {
+        MaterialOrder order = orderRepository
+                .findByIdAndFactory_Id(orderId, factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
+        order.cancel();
+        List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
+
+        return MaterialOrderResponseDto.from(order,items);
+    }
+
+    @Transactional
+    public void softDeleteMaterialOrder(Long factoryId, Long orderId) {
+        MaterialOrder order = orderRepository
+                .findByIdAndFactory_Id(orderId, factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
+
+
+
+        // JPA delete() 호출 → @SQLDelete가 UPDATE로 변환
+        orderRepository.delete(order);
+
+    }
+
+    @Transactional(readOnly = true)
+    public MaterialOrderResponseDto getMaterialOrderDetail(Long factoryId, Long orderId) {
+        MaterialOrder order = orderRepository.findByIdAndFactory_Id(orderId, factoryId )
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
+        List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
+        return MaterialOrderResponseDto.from(order,items);
+    }
+
     private String generateOrderCode() {
         return "ORD-" + System.currentTimeMillis();
     }
