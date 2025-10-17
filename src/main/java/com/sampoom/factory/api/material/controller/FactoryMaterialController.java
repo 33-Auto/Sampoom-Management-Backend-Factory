@@ -112,4 +112,15 @@ public class FactoryMaterialController {
         materialOrderService.softDeleteMaterialOrder(factoryId, orderId);
         return ApiResponse.success_only(SuccessStatus.OK);
     }
+
+    @Operation(summary = "자재 주문 상세 조회", description = "특정 자재 주문의 상세 정보를 조회합니다.")
+    @GetMapping("/{factoryId}/material/order/{orderId}")
+    public ResponseEntity<ApiResponse<MaterialOrderResponseDto>> getMaterialOrderDetail(
+            @PathVariable Long factoryId,
+            @PathVariable Long orderId) {
+        return ApiResponse.success(
+                SuccessStatus.OK,
+                materialOrderService.getMaterialOrderDetail(factoryId, orderId)
+        );
+    }
 }

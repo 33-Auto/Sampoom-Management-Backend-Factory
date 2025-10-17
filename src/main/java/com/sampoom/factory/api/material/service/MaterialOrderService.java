@@ -155,6 +155,14 @@ public class MaterialOrderService {
 
     }
 
+    @Transactional(readOnly = true)
+    public MaterialOrderResponseDto getMaterialOrderDetail(Long factoryId, Long orderId) {
+        MaterialOrder order = orderRepository.findByIdAndFactory_Id(orderId, factoryId )
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
+        List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
+        return MaterialOrderResponseDto.from(order,items);
+    }
+
     private String generateOrderCode() {
         return "ORD-" + System.currentTimeMillis();
     }
