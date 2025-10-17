@@ -1,22 +1,20 @@
-# changes/.github/workflows/trigger_infra.yml.template 파일 내용
-
 name: Trigger Infra CD
 
 on:
-  push:
-    branches:
-      - main
+  push:
+    branches:
+      - main
 
 jobs:
-  trigger-infra:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger infra repo deploy workflow
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.ORGANIZATION_TOKEN }}
-          # [중요] 아래 repository 값은 모든 앱이 공유하는 '중앙 인프라 리포지토리' 주소로 미리 수정해야 한다.
-          repository: 33-Auto/Sampoom-Mangement-Infra
-          event-type: deploy
-          # 'Sampoom-Management-Backend-Factory'은 스크립트가 동적으로 치환할 자리표시자(placeholder)이다.
-          client-payload: '{"service":"Sampoom-Management-Backend-Factory","branch":"main"}'
+  trigger-infra:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger infra repo deploy workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.ORGANIZATION_TOKEN }}
+          # [중요] 아래 repository 값은 모든 앱이 공유하는 '중앙 인프라 리포지토리' 주소이다.
+          repository: 33-Auto/Sampoom-Management-Backend-Infra
+          event-type: deploy
+          # 'Sampoom-Management-Backend-Part'은 스크립트가 동적으로 치환할 자리표시자(placeholder)이다.
+          client-payload: '{"service":"Sampoom-Management-Backend-Part","branch":"main"}'
