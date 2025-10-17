@@ -96,6 +96,15 @@ public class FactoryMaterialService {
             int page,
             int size
     ) {
+
+        factoryRepository.findById(factoryId)
+                            .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        if (categoryId != null) {
+            materialCategoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new NotFoundException(ErrorStatus.CATEGORY_NOT_FOUND));
+        }
+
         Pageable pageable = PageRequest.of(page, size);
 
         Page<FactoryMaterial> fmPage;

@@ -133,6 +133,7 @@ public class MaterialOrderService {
         return MaterialOrderResponseDto.from(order, items);
     }
 
+    @Transactional
     public MaterialOrderResponseDto  cancelMaterialOrder(Long factoryId, Long orderId) {
         MaterialOrder order = orderRepository
                 .findByIdAndFactory_Id(orderId, factoryId)
@@ -143,6 +144,7 @@ public class MaterialOrderService {
         return MaterialOrderResponseDto.from(order,items);
     }
 
+    @Transactional
     public void softDeleteMaterialOrder(Long factoryId, Long orderId) {
         MaterialOrder order = orderRepository
                 .findByIdAndFactory_Id(orderId, factoryId)

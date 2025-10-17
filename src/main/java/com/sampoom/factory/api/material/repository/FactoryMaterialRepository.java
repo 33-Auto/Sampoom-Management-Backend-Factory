@@ -24,6 +24,7 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
 
     Optional<FactoryMaterial> findByFactoryIdAndMaterialId(Long factoryId, Long materialId);
 
+    @EntityGraph(attributePaths = {"material", "material.materialCategory"})
     @Query("""
         select fm
         from FactoryMaterial fm
@@ -39,6 +40,7 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
             Pageable pageable
     );
 
+    @EntityGraph(attributePaths = {"material", "material.materialCategory"})
     @Query("""
         select fm
         from FactoryMaterial fm
