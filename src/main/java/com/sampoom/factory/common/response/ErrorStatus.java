@@ -10,29 +10,36 @@ import org.springframework.http.HttpStatus;
 public enum ErrorStatus {
 
     // 400 BAD_REQUEST
-    BAD_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다.",20001),
-    MISSING_EMAIL_VERIFICATION_EXCEPTION(HttpStatus.BAD_REQUEST, "이메일 인증을 진행해주세요.",20002),
-    ALREADY_REGISTER_EMAIL_EXCEPETION(HttpStatus.BAD_REQUEST, "이미 가입된 이메일 입니다.",20003),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다.",40001),
+    MISSING_EMAIL_VERIFICATION_EXCEPTION(HttpStatus.BAD_REQUEST, "이메일 인증을 진행해주세요.",40002),
+    ALREADY_REGISTER_EMAIL_EXCEPETION(HttpStatus.BAD_REQUEST, "이미 가입된 이메일 입니다.",40003),
+    FACTORY_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "해당 공장의 주문이 아닙니다.",40004),
+    ORDER_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 주문입니다.",40005),
+
 
 
     // 401 UNAUTHORIZED
-    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.", 20101),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.", 40101),
 
     // 403 FORBIDDEN
-    FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.",20301),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.",40301),
 
     // 404 NOT_FOUND
-    NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다.",20401),
-    MATERIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "자재를 찾을 수 없습니다.", 20402),
-    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다.", 20403),
+    NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다.",40401),
+    MATERIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "자재를 찾을 수 없습니다.", 40402),
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다.", 40403),
+    FACTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "공장을 찾을 수 없습니다.", 40404),
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다.", 40405),
+    PART_NOT_FOUND(HttpStatus.NOT_FOUND, "부품을 찾을 수 없습니다.", 40406),
+    BOM_NOT_FOUND(HttpStatus.NOT_FOUND, "BOM을 찾을 수 없습니다.", 40407),
 
 
 
     // 409 CONFLICT
-    CONFLICT(HttpStatus.CONFLICT, "충돌이 발생했습니다.",20901),
+    CONFLICT(HttpStatus.CONFLICT, "충돌이 발생했습니다.",40901),
 
     // 500 INTERNAL_SERVER_ERROR
-    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.",20501);
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.",40501);
 
     private final HttpStatus httpStatus;
     private final String message;
