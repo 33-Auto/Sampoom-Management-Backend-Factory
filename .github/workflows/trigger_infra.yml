@@ -14,7 +14,7 @@ jobs:
         with:
           token: ${{ secrets.ORGANIZATION_TOKEN }}
           # [중요] 아래 repository 값은 모든 앱이 공유하는 '중앙 인프라 리포지토리' 주소이다.
-          repository: 33-Auto/Sampoom-Management-Backend-Infra
+          repository: 33-Auto/Sampoom-Management-Infra
           event-type: deploy
           # 'Sampoom-Management-Backend-Part'은 스크립트가 동적으로 치환할 자리표시자(placeholder)이다.
           client-payload: '{"service":"Sampoom-Management-Backend-Part","branch":"main"}'
