@@ -1,6 +1,8 @@
 package com.sampoom.factory.api.material.entity;
 
 import com.sampoom.factory.api.factory.entity.Factory;
+import com.sampoom.factory.common.exception.BadRequestException;
+import com.sampoom.factory.common.response.ErrorStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,6 +35,16 @@ public class FactoryMaterial {
     }
 
     public void decreaseQuantity(Long amount) {
-        this.quantity -= amount;
-    }
+                if (amount == null || amount <= 0) {
+                        throw new BadRequestException(ErrorStatus.INVALID_QUANTITY);
+                    }
+                if (this.quantity == null) {
+                        this.quantity = 0L;
+                    }
+                long newQty = this.quantity - amount;
+                if (newQty < 0) {
+                        throw new BadRequestException(ErrorStatus.INSUFFICIENT_MATERIAL_QUANTITY);
+                   }
+                this.quantity = newQty;
+            }
 }

@@ -29,7 +29,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,11 +60,15 @@ public class PartOrderService {
         List<PartOrderItem> items = new ArrayList<>();
         boolean lackOfMaterial = false;
 
+        Map<Long, Bom> bomCache = new HashMap<>();
+
+
         for (PartOrderRequestDto.PartOrderItemRequestDto itemReq : request.getItems()) {
             Part part = partRepository.findById(itemReq.getPartId())
                     .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_NOT_FOUND));
             Bom bom = bomRepository.findByPart_Id(itemReq.getPartId())
                     .orElseThrow(() -> new NotFoundException(ErrorStatus.BOM_NOT_FOUND));
+            bomCache.put(itemReq.getPartId(), bom);
 
             // 자재 차감 가능 여부 확인
             for (BomMaterial bomMaterial : bom.getMaterials()) {
@@ -90,8 +96,7 @@ public class PartOrderService {
             partOrder.updateStatus(PartOrderStatus.IN_PRODUCTION);
             // 자재 차감 로직 추가
             for (PartOrderItem item : items) {
-                Bom bom = bomRepository.findByPart_Id(item.getPart().getId())
-                        .orElseThrow(() -> new NotFoundException(ErrorStatus.BOM_NOT_FOUND));
+                Bom bom = bomCache.get(item.getPart().getId());
                 for (BomMaterial bomMaterial : bom.getMaterials()) {
                     FactoryMaterial factoryMaterial = factoryMaterialRepository
                             .findByFactoryIdAndMaterialId(factoryId, bomMaterial.getMaterial().getId())
@@ -235,6 +240,7 @@ public class PartOrderService {
                 .build();
     }
 
+    @Transactional
     public PartOrderResponseDto cancelPartOrder(Long factoryId, Long orderId) {
         // 주문 조회
         PartOrder partOrder = partOrderRepository.findById(orderId)

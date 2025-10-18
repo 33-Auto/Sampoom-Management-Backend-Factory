@@ -22,7 +22,7 @@ public class PartOrder {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "factory_id")
+    @JoinColumn(name = "factory_id", nullable = false)
     private Factory factory;
 
     @Enumerated(EnumType.STRING)
