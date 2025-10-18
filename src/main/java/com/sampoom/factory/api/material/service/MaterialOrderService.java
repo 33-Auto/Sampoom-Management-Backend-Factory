@@ -100,7 +100,7 @@ public class MaterialOrderService {
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
 
         if (!order.getFactory().getId().equals(factoryId)) {
-            throw new BadRequestException(ErrorStatus.FACTORY_ORDER_MISMATCH);
+            throw new BadRequestException(ErrorStatus.FACTORY_MATERIAL_ORDER_MISMATCH);
         }
 
         order.receive();

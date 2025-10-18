@@ -24,6 +24,8 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
 
     Optional<FactoryMaterial> findByFactoryIdAndMaterialId(Long factoryId, Long materialId);
 
+
+
     @EntityGraph(attributePaths = {"material", "material.materialCategory"})
     @Query("""
         select fm

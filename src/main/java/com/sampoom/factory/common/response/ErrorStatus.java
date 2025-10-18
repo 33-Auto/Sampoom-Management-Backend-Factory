@@ -13,8 +13,15 @@ public enum ErrorStatus {
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다.",40001),
     MISSING_EMAIL_VERIFICATION_EXCEPTION(HttpStatus.BAD_REQUEST, "이메일 인증을 진행해주세요.",40002),
     ALREADY_REGISTER_EMAIL_EXCEPETION(HttpStatus.BAD_REQUEST, "이미 가입된 이메일 입니다.",40003),
-    FACTORY_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "해당 공장의 주문이 아닙니다.",40004),
+    FACTORY_MATERIAL_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "해당 공장의 자재 주문이 아닙니다.",40004),
     ORDER_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 주문입니다.",40005),
+    INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 주문 상태입니다.",40006),
+    ORDER_NOT_IN_PRODUCTION(HttpStatus.BAD_REQUEST, "생산 중인 주문만 완료 처리할 수 있습니다.", 40007),
+    PART_ORDER_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 부품 주문을 찾을 수 없습니다.", 40008),
+    INVALID_FACTORY_FOR_PART_ORDER(HttpStatus.BAD_REQUEST, "해당 공장의 부품 주문이 아닙니다.", 40009),
+    CANNOT_CANCEL_PROCESSED_ORDER(HttpStatus.BAD_REQUEST, "이미 처리 중인 주문은 취소할 수 없습니다.", 40010),
+    INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "유효하지 않은 수량입니다.",40011),
+    INSUFFICIENT_MATERIAL_QUANTITY(HttpStatus.BAD_REQUEST, "자재 수량이 부족합니다.",40012),
 
 
 
