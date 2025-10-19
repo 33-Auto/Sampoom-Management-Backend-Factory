@@ -13,12 +13,14 @@ import lombok.NoArgsConstructor;
 public  class MaterialOrderItemDto {
     private Long materialId;
     private String materialName;
+    private String unit;
     private Long quantity;
 
     public static MaterialOrderItemDto from(MaterialOrderItem item) {
         return MaterialOrderItemDto.builder()
                 .materialId(item.getMaterial().getId())
                 .materialName(item.getMaterial().getName())
+                .unit(item.getMaterial().getUnit())
                 .quantity(item.getQuantity())
                 .build();
     }

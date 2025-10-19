@@ -32,6 +32,7 @@ public class BomDetailResponseDto {
         private Long materialId;
         private String materialName;
         private String materialCode;
+        private String unit;
         private Long quantity;
     }
 
@@ -42,6 +43,7 @@ public class BomDetailResponseDto {
                         .materialId(material.getMaterial().getId())
                         .materialName(material.getMaterial().getName())
                         .materialCode(material.getMaterial().getCode())
+                        .unit(material.getMaterial().getUnit())
                         .quantity(material.getQuantity())
                         .build())
                 .collect(Collectors.toList());

@@ -22,6 +22,9 @@ public class Material {
     @Column(name = "material_code", nullable = false)
     private String code;
 
+    @Column(name = "unit", nullable = false)
+    private String unit;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_category_id")
     private MaterialCategory materialCategory;
