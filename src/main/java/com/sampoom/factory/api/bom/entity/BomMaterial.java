@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "bom_material") // 실제 테이블명이 'BOM-자재'가 아니라면 명확히 지정
+@Table(name = "bom_material")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

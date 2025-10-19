@@ -7,6 +7,7 @@ import com.sampoom.factory.common.response.ErrorStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @SQLDelete(sql = "UPDATE material_order SET deleted = true, deleted_at = now() WHERE material_order_id = ?")
-@Where(clause = "deleted = false")
+@SQLRestriction("deleted = false")
 public class MaterialOrder extends SoftDeleteEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

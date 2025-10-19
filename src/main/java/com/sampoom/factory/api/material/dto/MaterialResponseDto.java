@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class MaterialResponseDto {
     private Long id;
     private String name;
+    private String unit;
     private String materialCode;
     private Long materialCategoryId;
     private String materialCategoryName;
@@ -22,6 +23,7 @@ public class MaterialResponseDto {
         return MaterialResponseDto.builder()
                 .id(material.getId())
                 .name(material.getName())
+                .unit(material.getUnit())
                 .materialCode(material.getCode())
                 .materialCategoryId(material.getMaterialCategory().getId())
                 .materialCategoryName(material.getMaterialCategory().getName())
