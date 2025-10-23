@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.factory.service;
 
-import com.sampoom.factory.api.factory.dto.FactoryCreateRequestDto;
 import com.sampoom.factory.api.factory.dto.FactoryRequestDto;
 import com.sampoom.factory.api.factory.dto.FactoryResponseDto;
 import com.sampoom.factory.api.factory.entity.Factory;
