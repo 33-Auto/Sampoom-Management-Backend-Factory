@@ -1,6 +1,6 @@
 package com.sampoom.factory.api.factory.service;
 
-import com.sampoom.factory.api.factory.dto.FactoryCreateRequestDto;
+import com.sampoom.factory.api.factory.dto.FactoryRequestDto;
 import com.sampoom.factory.api.factory.dto.FactoryResponseDto;
 import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.api.factory.repository.FactoryRepository;
@@ -39,8 +39,8 @@ class FactoryServiceTest {
     @DisplayName("공장 생성 시 모든 자재가 수량 0으로 연결된다")
     void createFactory_ShouldCreateFactoryWithAllMaterialsQuantityZero() {
         // Given
-        var requestDto = new FactoryCreateRequestDto("테스트 공장", "테스트 위치");
-        var factory = Factory.builder().id(1L).name("테스트 공장").location("테스트 위치").build();
+        var requestDto = new FactoryRequestDto("테스트 공장", "테스트 위치");
+        var factory = Factory.builder().id(1L).name("테스트 공장").address("테스트 위치").build();
 
         // Material은 읽기 전용 → mock으로 id만 스텁
         Material material1 = mock(Material.class);

@@ -9,18 +9,18 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FactoryCreateRequestDto {
+public class FactoryRequestDto {
 
     @NotBlank(message = "공장 이름은 필수입니다")
     private String name;
 
     @NotBlank(message = "공장 위치는 필수입니다")
-    private String location;
+    private String address;
 
     public Factory toEntity() {
         return Factory.builder()
                 .name(this.name)
-                .address(this.location)
+                .address(this.address)
                 .build();
     }
 }
