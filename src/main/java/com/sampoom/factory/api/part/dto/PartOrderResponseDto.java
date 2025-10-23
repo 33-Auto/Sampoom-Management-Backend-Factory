@@ -13,6 +13,8 @@ public class PartOrderResponseDto {
     private String warehouseName;
     private LocalDateTime orderDate;
     private String status;
+    private String factoryName;
+    private Long factoryId;
     private List<PartOrderItemDto> items;
 
     @Getter
