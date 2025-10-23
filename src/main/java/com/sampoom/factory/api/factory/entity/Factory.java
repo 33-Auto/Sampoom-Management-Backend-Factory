@@ -15,7 +15,7 @@ import org.hibernate.annotations.SQLRestriction;
 @AllArgsConstructor
 @Builder
 @SQLDelete(sql = "UPDATE factory " +
-        "SET deleted = true, deleted_at = now(), version = version + 1 " +
+        "SET deleted = true, deleted_at = now() " +
         "WHERE factory_id = ? AND version = ?")
 @SQLRestriction("deleted = false")
 public class Factory extends SoftDeleteEntity {
@@ -45,6 +45,11 @@ public class Factory extends SoftDeleteEntity {
     public void update(FactoryRequestDto dto) {
         this.name = dto.getName();
         this.address = dto.getAddress();
+    }
+
+
+    public void inactivate() {
+        this.status = FactoryStatus.INACTIVE;
     }
 
 

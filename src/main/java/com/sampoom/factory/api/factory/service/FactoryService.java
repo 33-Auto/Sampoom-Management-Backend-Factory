@@ -73,6 +73,8 @@ public class FactoryService {
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         // 관련 데이터 삭제 처리
+        factory.inactivate();
+        factoryRepository.flush();
         factoryMaterialRepository.deleteAllByFactory(factory);
         factoryRepository.delete(factory);
         factoryEventService.recordFactoryDeleted(factory);

@@ -22,33 +22,33 @@ public class FactoryEventService {
 
     @Transactional
     public void recordFactoryCreated(Factory factory){
-        enqueueEvent("FactoryCreated", factory, nvl(factory.getVersion(), 0L));
+        enqueueEvent("FactoryCreated", factory, nvl(factory.getVersion(), 0L  ), false);
     }
 
     @Transactional
     public void recordFactoryUpdated(Factory factory){
-        enqueueEvent("FactoryUpdated", factory, nvl(factory.getVersion(), 0L));
+        enqueueEvent("FactoryUpdated", factory, nvl(factory.getVersion(), 0L ), false);
     }
 
     @Transactional
     public void recordFactoryDeleted(Factory factory){
-        // ✅ 삭제는 반드시 current+1 로 보냄
-        long nextVersion = nvl(factory.getVersion(), 0L) + 1;
-        enqueueEvent("FactoryDeleted", factory, nextVersion);
+
+        enqueueEvent("FactoryDeleted", factory, nvl(factory.getVersion(), 0L), true);
     }
 
-    // ===== 공통 헬퍼 (버전 명시) =====
-    private void enqueueEvent(String eventType, Factory factory, long version) {
+    // ===== 공통 헬퍼 =====
+    private void enqueueEvent(String eventType, Factory factory, long version, Boolean deleted) {
         FactoryEvent evt = new FactoryEvent(
                 UUID.randomUUID().toString(),
                 eventType,
-                version,                                // ✅ 여기서 명시적으로 사용
+                version,
                 OffsetDateTime.now().toString(),
                 new FactoryEvent.Payload(
                         factory.getId(),
                         factory.getName(),
                         factory.getAddress(),
-                        factory.getStatus().name()
+                        factory.getStatus().name(),
+                        deleted
                 )
         );
 

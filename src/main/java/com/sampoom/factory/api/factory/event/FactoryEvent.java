@@ -7,5 +7,5 @@ public record FactoryEvent(
         String occurredAt,       // ISO-8601
         Payload payload
 ){
-    public record Payload(Long factoryId, String name, String address, String status) {}
+    public record Payload(Long factoryId, String name, String address, String status,Boolean deleted) {}
 }
