@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @MappedSuperclass
 @Getter
 public abstract class SoftDeleteEntity extends BaseTimeEntity {
-    @Column(nullable = false)
+    @Column(nullable = true)
     protected boolean deleted = false;
 
     protected LocalDateTime deletedAt;

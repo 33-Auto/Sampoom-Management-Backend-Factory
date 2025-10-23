@@ -1,6 +1,7 @@
 package com.sampoom.factory.api.material.repository;
 
 
+import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,4 +61,6 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    void deleteAllByFactory(Factory factory);
 }
