@@ -10,7 +10,12 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "factory_outbox")
+@Table(
+        name = "factory_outbox",
+        uniqueConstraints = {
+                        @UniqueConstraint(name = "uq_factory_outbox_event_id", columnNames = {"event_id"})
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -28,7 +33,7 @@ public class FactoryOutbox {
     @Column(nullable = false)
     private Long aggregateId;  // 관련 엔티티 ID (예: factory_id)
 
-    @Column(nullable = false, columnDefinition = "uuid")
+    @Column(name = "event_id", nullable = false, unique = true, columnDefinition = "uuid")
     private UUID eventId;  // 이벤트 고유 ID (멱등성 보장용)
 
     @JdbcTypeCode(SqlTypes.JSON)

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -37,7 +38,8 @@ public class FactoryOutboxPublisher {
         for (FactoryOutbox o : batch){
             try {
                 FactoryEvent evt = objectMapper.treeToValue(o.getPayload(), FactoryEvent.class);
-                kafkaTemplate.send(topic, String.valueOf(o.getAggregateId()), evt).get(); // 동기 전송으로 실패 감지
+                kafkaTemplate.send(topic, String.valueOf(o.getAggregateId()), evt)
+                                                     .get(5, TimeUnit.SECONDS);
 
                 o.markPublished();
 

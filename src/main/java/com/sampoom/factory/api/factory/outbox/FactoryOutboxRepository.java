@@ -19,8 +19,8 @@ public interface FactoryOutboxRepository extends JpaRepository<FactoryOutbox, Lo
           AND retry_count < :maxRetry
           AND (next_retry_at IS NULL OR next_retry_at <= now())
         ORDER BY occurred_at ASC
-        FOR UPDATE SKIP LOCKED
         LIMIT :limit
+        FOR UPDATE SKIP LOCKED
         """, nativeQuery = true)
     List<FactoryOutbox> pickReadyBatch(@Param("limit") int limit,
                                        @Param("maxRetry") int maxRetry);
