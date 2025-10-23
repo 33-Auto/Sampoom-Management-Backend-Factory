@@ -23,15 +23,7 @@ public class PartOrderController {
     private final PartOrderService partOrderService;
 
 
-    @Operation(summary = "부품 주문 생성", description = "공장에 필요한 부품 주문을 생성합니다.")
-    @PostMapping("/order")
-    public ResponseEntity<ApiResponse<PartOrderResponseDto>> createPartOrder(
-            @PathVariable Long factoryId,
-            @RequestBody PartOrderRequestDto request
-    ) {
-        PartOrderResponseDto response = partOrderService.createPartOrder(factoryId, request);
-        return ApiResponse.success(SuccessStatus.CREATED, response);
-    }
+
 
     @Operation(summary = "부품 주문 완료 처리", description = "생산 중인 부품 주문을 완료 상태로 변경합니다.")
     @PatchMapping("/order/{orderId}/complete")

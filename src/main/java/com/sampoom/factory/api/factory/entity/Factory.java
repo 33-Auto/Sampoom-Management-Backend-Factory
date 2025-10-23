@@ -20,6 +20,6 @@ public class Factory {
     @Column(name = "factory_name")
     private String name;
 
-    private String location;
+    private String address;
 
 }
