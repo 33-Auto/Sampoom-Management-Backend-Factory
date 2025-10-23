@@ -9,13 +9,13 @@ import lombok.Getter;
 public class FactoryResponseDto {
     private Long id;
     private String name;
-    private String location;
+    private String address;
 
     public static FactoryResponseDto from(Factory factory) {
         return FactoryResponseDto.builder()
                 .id(factory.getId())
                 .name(factory.getName())
-                .location(factory.getLocation())
+                .address(factory.getAddress())
                 .build();
     }
 }

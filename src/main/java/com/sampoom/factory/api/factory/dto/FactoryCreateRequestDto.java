@@ -20,7 +20,7 @@ public class FactoryCreateRequestDto {
     public Factory toEntity() {
         return Factory.builder()
                 .name(this.name)
-                .location(this.location)
+                .address(this.location)
                 .build();
     }
 }

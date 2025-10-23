@@ -22,6 +22,7 @@ public enum ErrorStatus {
     CANNOT_CANCEL_PROCESSED_ORDER(HttpStatus.BAD_REQUEST, "이미 처리 중인 주문은 취소할 수 없습니다.", 40010),
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "유효하지 않은 수량입니다.",40011),
     INSUFFICIENT_MATERIAL_QUANTITY(HttpStatus.BAD_REQUEST, "자재 수량이 부족합니다.",40012),
+    NO_AVAILABLE_FACTORY(HttpStatus.BAD_REQUEST, "사용 가능한 공장이 없습니다.",40013),
 
 
 
