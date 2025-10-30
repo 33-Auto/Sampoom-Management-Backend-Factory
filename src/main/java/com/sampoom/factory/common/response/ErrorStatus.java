@@ -17,6 +17,7 @@ public enum ErrorStatus {
     ORDER_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 주문입니다.",40005),
     INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 주문 상태입니다.",40006),
     ORDER_NOT_IN_PRODUCTION(HttpStatus.BAD_REQUEST, "생산 중인 주문만 완료 처리할 수 있습니다.", 40007),
+    ORDER_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "진행 중인 주문만 완료 처리할 수 있습니다.", 40014),
     PART_ORDER_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 부품 주문을 찾을 수 없습니다.", 40008),
     INVALID_FACTORY_FOR_PART_ORDER(HttpStatus.BAD_REQUEST, "해당 공장의 부품 주문이 아닙니다.", 40009),
     CANNOT_CANCEL_PROCESSED_ORDER(HttpStatus.BAD_REQUEST, "이미 처리 중인 주문은 취소할 수 없습니다.", 40010),

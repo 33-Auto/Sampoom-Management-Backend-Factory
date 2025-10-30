@@ -22,6 +22,9 @@ public class Part extends BaseTimeEntity{
     private String name;
     private String status;
 
+    @Column(name = "lead_time_days")
+    private Integer leadTimeDays; // 부품 생산 리드타임 (일 단위)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private PartGroup group;

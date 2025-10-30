@@ -25,6 +25,9 @@ public class Material {
     @Column(name = "unit", nullable = false)
     private String unit;
 
+    @Column(name = "lead_time_days")
+    private Integer leadTimeDays; // 자재 조달 리드타임 (일 단위)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_category_id")
     private MaterialCategory materialCategory;
