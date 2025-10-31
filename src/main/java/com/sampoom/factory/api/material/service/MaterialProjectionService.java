@@ -3,10 +3,6 @@ package com.sampoom.factory.api.material.service;
 import com.sampoom.factory.api.material.dto.MaterialEventDto;
 import com.sampoom.factory.api.material.entity.MaterialProjection;
 import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
-import com.sampoom.factory.api.part.dto.PartEventDto;
-import com.sampoom.factory.api.part.entity.PartProjection;
-import com.sampoom.factory.api.part.entity.PartStatus;
-import com.sampoom.factory.api.part.repository.PartProjectionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -79,7 +75,7 @@ public class MaterialProjectionService {
 
         Optional<MaterialProjection> existingMaterial = materialProjectionRepository.findByMaterialId(payload.getMaterialId());
         if (existingMaterial.isEmpty()) {
-            log.warn("존재하지 않는 Part입니다. partId: {}", payload.getMaterialId());
+            log.warn("존재하지 않는 Material materialId: {}", payload.getMaterialId());
             return;
         }
 
@@ -99,7 +95,7 @@ public class MaterialProjectionService {
         );
 
         materialProjectionRepository.save(updatedMaterial);
-        log.info("Part 업데이트 완료: partId={}, name={}", payload.getMaterialId(), payload.getName());
+        log.info("Material 업데이트 완료: materialId={}, name={}", payload.getMaterialId(), payload.getName());
     }
 
     private void handleMaterialDeleted(MaterialEventDto eventDto) {
@@ -107,7 +103,7 @@ public class MaterialProjectionService {
 
         Optional<MaterialProjection> existingMaterial = materialProjectionRepository.findByMaterialId(payload.getMaterialId());
         if (existingMaterial.isEmpty()) {
-            log.warn("존재하지 않는 Part입니다. partId: {}", payload.getMaterialId());
+            log.warn("존재하지 않는 Material. materialId: {}", payload.getMaterialId());
             return;
         }
 

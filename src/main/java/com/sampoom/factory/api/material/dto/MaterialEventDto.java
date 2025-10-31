@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.material.dto;
 
-import com.sampoom.factory.api.part.dto.PartEventDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

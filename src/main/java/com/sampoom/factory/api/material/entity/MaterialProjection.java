@@ -1,7 +1,5 @@
 package com.sampoom.factory.api.material.entity;
 
-import com.sampoom.factory.api.part.entity.PartProjection;
-import com.sampoom.factory.api.part.entity.PartStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,7 +24,7 @@ public class MaterialProjection {
     private Long id;                  // Projection 전용 ID
 
     @Column(nullable = false, unique = true)
-    private Long materialId;              // 원본 Part ID
+    private Long materialId;              // 원본 Material ID
 
     @Column(nullable = false)
     private String code;
