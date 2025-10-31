@@ -1,6 +1,8 @@
 package com.sampoom.factory.common.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sampoom.factory.api.bom.dto.BomEventDto;
+import com.sampoom.factory.api.bom.service.BomProjectionService;
 import com.sampoom.factory.api.material.dto.MaterialCategoryEventDto;
 import com.sampoom.factory.api.material.dto.MaterialEventDto;
 import com.sampoom.factory.api.material.service.MaterialCategoryProjectionService;
@@ -28,6 +30,7 @@ public class ProjectionEventHandler {
     private final PartGroupProjectionService partGroupProjectionService;
     private final MaterialProjectionService materialProjectionService;
     private final MaterialCategoryProjectionService materialCategoryProjectionService;
+    private final BomProjectionService bomProjectionService;
 
     @KafkaListener(topics = "part-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handlePartEvent(String message) {
@@ -52,6 +55,11 @@ public class ProjectionEventHandler {
     @KafkaListener(topics = "material-category-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handleMaterialCategoryEvent(String message) {
         handleEvent(message, "MaterialCategoryEvent", MaterialCategoryEventDto.class, materialCategoryProjectionService::handleMaterialCategoryEvent);
+    }
+
+    @KafkaListener(topics = "bom-events", groupId = "${spring.kafka.consumer.group-id}")
+    public void handleBomEvent(String message) {
+        handleEvent(message, "BomEvent", BomEventDto.class, bomProjectionService::handleBomEvent);
     }
 
 
