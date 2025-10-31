@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface BomProjectionRepository extends JpaRepository<BomProjection, String> {
+public interface BomProjectionRepository extends JpaRepository<BomProjection, Long> {
     Optional<BomProjection> findByBomId(Long bomId);
 }

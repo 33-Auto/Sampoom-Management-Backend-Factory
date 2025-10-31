@@ -98,6 +98,8 @@ public class BomProjectionService {
 
         BomProjection currentBom = existingBom.get();
 
+        bomMaterialProjectionRepository.deleteByBomId(payload.getBomId());
+
         List<BomMaterialProjection> materials = payload.getMaterials().stream()
                 .map(m -> BomMaterialProjection.builder()
                         .bomId(payload.getBomId())
