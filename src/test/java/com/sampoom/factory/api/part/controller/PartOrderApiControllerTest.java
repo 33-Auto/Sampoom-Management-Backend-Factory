@@ -85,7 +85,7 @@ class PartOrderApiControllerTest {
                 .orderId(1L)
                 .warehouseName("테스트 창고")
                 .orderDate(LocalDateTime.now())
-                .status(PartOrderStatus.IN_PRODUCTION.name())
+                .status(PartOrderStatus.UNDER_REVIEW.name())
                 .factoryId(1L)
                 .factoryName("테스트 공장")
                 .items(List.of(itemDto))

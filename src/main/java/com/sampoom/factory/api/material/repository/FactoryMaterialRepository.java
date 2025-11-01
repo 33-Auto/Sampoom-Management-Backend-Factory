@@ -5,7 +5,6 @@ import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,44 +15,31 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
 
 
 
-    @EntityGraph(attributePaths = {"material", "material.materialCategory"})
-    Page<FactoryMaterial> findByFactory_IdAndMaterial_MaterialCategory_Id(
-            Long factoryId, Long categoryId, Pageable pageable);
+    Page<FactoryMaterial> findByFactory_IdAndMaterialIdIn(Long factoryId, Iterable<Long> materialIds, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"material"})
-    Page<FactoryMaterial> findByFactory_Id(Long factoryId, Pageable pageable);
-
-    Optional<FactoryMaterial> findByFactoryIdAndMaterialId(Long factoryId, Long materialId);
-
-
-
-    @EntityGraph(attributePaths = {"material", "material.materialCategory"})
     @Query("""
         select fm
         from FactoryMaterial fm
-        join fm.factory factory
-        join fm.material material
-        left join material.materialCategory category
-        where factory.id = :factoryId
-          and (:categoryId is null or category.id = :categoryId)
+        where fm.factory.id = :factoryId
+          and (:categoryId is null or fm.materialId in (
+            select mp.materialId from MaterialProjection mp where mp.categoryId = :categoryId
+          ))
         """)
     Page<FactoryMaterial> findByFactoryAndCategory(
             @Param("factoryId") Long factoryId,
             @Param("categoryId") Long categoryId,
-            Pageable pageable
-    );
+            Pageable pageable);
 
-    @EntityGraph(attributePaths = {"material", "material.materialCategory"})
     @Query("""
         select fm
         from FactoryMaterial fm
-        join fm.factory factory
-        join fm.material material
-        left join material.materialCategory category
-        where factory.id = :factoryId
-          and (:categoryId is null or category.id = :categoryId)
-          and (lower(material.name) like lower(concat('%', :keyword, '%'))
-               or lower(material.code) like lower(concat('%', :keyword, '%')))
+        where fm.factory.id = :factoryId
+          and (:categoryId is null or fm.materialId in (
+            select mp.materialId from MaterialProjection mp where mp.categoryId = :categoryId
+          ))
+          and (:keyword is null or :keyword = '' or fm.materialId in (
+            select mp.materialId from MaterialProjection mp where mp.name like concat('%', :keyword, '%')
+          ))
         """)
     Page<FactoryMaterial> findByFactoryCategoryAndKeyword(
             @Param("factoryId") Long factoryId,
@@ -63,4 +49,6 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
     );
 
     void deleteAllByFactory(Factory factory);
+
+    Optional<FactoryMaterial> findByFactoryIdAndMaterialId(Long factoryId, Long materialId);
 }

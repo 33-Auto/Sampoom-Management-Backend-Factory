@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface BomProjectionRepository extends JpaRepository<BomProjection, Long> {
     Optional<BomProjection> findByBomId(Long bomId);
+
+    Optional<BomProjection> findByPartId(Long partId);
 }

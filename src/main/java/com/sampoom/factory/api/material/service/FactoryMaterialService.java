@@ -1,15 +1,16 @@
 package com.sampoom.factory.api.material.service;
 
-import com.sampoom.factory.api.material.dto.MaterialCategoryResponseDto;
 import com.sampoom.factory.api.material.dto.MaterialResponseDto;
 import com.sampoom.factory.common.response.PageResponseDto;
 import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import com.sampoom.factory.api.material.repository.FactoryMaterialRepository;
 import com.sampoom.factory.api.factory.repository.FactoryRepository;
-import com.sampoom.factory.api.material.entity.Material;
-import com.sampoom.factory.api.material.entity.MaterialCategory;
-import com.sampoom.factory.api.material.repository.MaterialCategoryRepository;
+
+import com.sampoom.factory.api.material.repository.MaterialCategoryProjectionRepository;
+import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
+import com.sampoom.factory.api.material.entity.MaterialProjection;
+import com.sampoom.factory.api.material.entity.MaterialCategoryProjection;
 import com.sampoom.factory.common.exception.NotFoundException;
 import com.sampoom.factory.common.response.ErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,32 +33,59 @@ public class FactoryMaterialService {
 
     private final FactoryRepository factoryRepository;
     private final FactoryMaterialRepository factoryMaterialRepository;
-    private final MaterialCategoryRepository materialCategoryRepository;
-
-    public List<MaterialCategoryResponseDto> getAllMaterialCategories() {
-        List<MaterialCategory> categories = materialCategoryRepository.findAll();
-        return categories.stream()
-                .map(MaterialCategoryResponseDto::from)
-                .collect(Collectors.toList());
-    }
+    private final MaterialCategoryProjectionRepository materialCategoryProjectionRepository;
+    private final MaterialProjectionRepository materialProjectionRepository;
 
     public PageResponseDto<MaterialResponseDto> getMaterialsByFactoryAndCategory(
             Long factoryId, Long categoryId, int page, int size) {
         Factory factory = factoryRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
-        MaterialCategory category = materialCategoryRepository.findById(categoryId)
+        materialCategoryProjectionRepository.findByCategoryId(categoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.CATEGORY_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size);
         Page<FactoryMaterial> materialsPage = factoryMaterialRepository
-                .findByFactory_IdAndMaterial_MaterialCategory_Id(factoryId, categoryId, pageable);
+                .findByFactoryAndCategory(factoryId, categoryId, pageable);
+
+        // N+1 문제 해결: 배치로 MaterialProjection들을 미리 조회
+        List<Long> materialIds = materialsPage.getContent().stream()
+                .map(FactoryMaterial::getMaterialId)
+                .toList();
+
+        List<MaterialProjection> materialProjections = materialProjectionRepository.findByMaterialIdIn(materialIds);
+        Map<Long, MaterialProjection> materialProjectionMap = materialProjections.stream()
+                .collect(Collectors.toMap(MaterialProjection::getMaterialId, mp -> mp));
+
+        // N+1 문제 해결: 배치로 MaterialCategory들을 미리 조회
+        List<Long> categoryIds = materialProjections.stream()
+                .map(MaterialProjection::getCategoryId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        List<MaterialCategoryProjection> categories = materialCategoryProjectionRepository.findByCategoryIdIn(categoryIds);
+        Map<Long, String> categoryNameMap = categories.stream()
+                .collect(Collectors.toMap(MaterialCategoryProjection::getCategoryId, MaterialCategoryProjection::getName));
 
         List<MaterialResponseDto> content = materialsPage.getContent().stream()
                 .map(factoryMaterial -> {
-                    Material material = factoryMaterial.getMaterial();
-                    return MaterialResponseDto.from(material)
+                    Long materialId = factoryMaterial.getMaterialId();
+                    MaterialProjection materialProjection = materialProjectionMap.get(materialId);
+                    if (materialProjection == null) {
+                        throw new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND);
+                    }
+
+                    MaterialResponseDto dto = MaterialResponseDto.from(materialProjection)
                             .withQuantity(factoryMaterial.getQuantity());
+
+                    if (materialProjection.getCategoryId() != null) {
+                        String categoryName = categoryNameMap.get(materialProjection.getCategoryId());
+                        if (categoryName != null) {
+                            dto.withCategoryName(categoryName);
+                        }
+                    }
+                    return dto;
                 })
                 .collect(Collectors.toList());
 
@@ -63,28 +93,6 @@ public class FactoryMaterialService {
                 .content(content)
                 .totalElements(materialsPage.getTotalElements())
                 .totalPages(materialsPage.getTotalPages())
-                .build();
-    }
-
-    public PageResponseDto<MaterialResponseDto> getMaterialsByFactoryId(Long factoryId, int page, int size) {
-        Factory factory = factoryRepository.findById(factoryId)
-                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
-
-        Pageable pageable = PageRequest.of(page, size);
-        Page<FactoryMaterial> factoryMaterialsPage = factoryMaterialRepository.findByFactory_Id(factoryId, pageable);
-
-        List<MaterialResponseDto> content = factoryMaterialsPage.getContent().stream()
-                .map(factoryMaterial -> {
-                    Material material = factoryMaterial.getMaterial();
-                    return MaterialResponseDto.from(material)
-                            .withQuantity(factoryMaterial.getQuantity());
-                })
-                .collect(Collectors.toList());
-
-        return PageResponseDto.<MaterialResponseDto>builder()
-                .content(content)
-                .totalElements(factoryMaterialsPage.getTotalElements())
-                .totalPages(factoryMaterialsPage.getTotalPages())
                 .build();
     }
 
@@ -101,7 +109,7 @@ public class FactoryMaterialService {
                             .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         if (categoryId != null) {
-            materialCategoryRepository.findById(categoryId)
+            materialCategoryProjectionRepository.findByCategoryId(categoryId)
                     .orElseThrow(() -> new NotFoundException(ErrorStatus.CATEGORY_NOT_FOUND));
         }
 
@@ -115,11 +123,45 @@ public class FactoryMaterialService {
             fmPage = factoryMaterialRepository.findByFactoryCategoryAndKeyword(
                     factoryId, categoryId, keyword, pageable);
         }
+
+        // N+1 문제 해결: 배치로 MaterialProjection들을 미리 조회
+        List<Long> materialIds = fmPage.getContent().stream()
+                .map(FactoryMaterial::getMaterialId)
+                .toList();
+
+        List<MaterialProjection> materialProjections = materialProjectionRepository.findByMaterialIdIn(materialIds);
+        Map<Long, MaterialProjection> materialProjectionMap = materialProjections.stream()
+                .collect(Collectors.toMap(MaterialProjection::getMaterialId, mp -> mp));
+
+        // N+1 문제 해결: 배치로 MaterialCategory들을 미리 조회
+        List<Long> categoryIds = materialProjections.stream()
+                .map(MaterialProjection::getCategoryId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        List<MaterialCategoryProjection> categories = materialCategoryProjectionRepository.findByCategoryIdIn(categoryIds);
+        Map<Long, String> categoryNameMap = categories.stream()
+                .collect(Collectors.toMap(MaterialCategoryProjection::getCategoryId, MaterialCategoryProjection::getName));
+
         List<MaterialResponseDto> content = fmPage.getContent().stream()
                 .map(factoryMaterial -> {
-                    Material material = factoryMaterial.getMaterial();
-                    return MaterialResponseDto.from(material)
+                    Long materialId = factoryMaterial.getMaterialId();
+                    MaterialProjection materialProjection = materialProjectionMap.get(materialId);
+                    if (materialProjection == null) {
+                        throw new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND);
+                    }
+
+                    MaterialResponseDto dto = MaterialResponseDto.from(materialProjection)
                             .withQuantity(factoryMaterial.getQuantity());
+
+                    if (materialProjection.getCategoryId() != null) {
+                        String categoryName = categoryNameMap.get(materialProjection.getCategoryId());
+                        if (categoryName != null) {
+                            dto.withCategoryName(categoryName);
+                        }
+                    }
+                    return dto;
                 })
                 .collect(Collectors.toList());
 

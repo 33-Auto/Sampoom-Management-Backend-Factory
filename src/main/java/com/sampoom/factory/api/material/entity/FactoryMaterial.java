@@ -23,10 +23,8 @@ public class FactoryMaterial {
     @JoinColumn(name = "factory_id")
     private Factory factory;
 
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "material_id")
-    private Material material;
+    @Column(name = "material_id")
+    private Long materialId;
 
     private Long quantity;
 
@@ -35,16 +33,16 @@ public class FactoryMaterial {
     }
 
     public void decreaseQuantity(Long amount) {
-                if (amount == null || amount <= 0) {
-                        throw new BadRequestException(ErrorStatus.INVALID_QUANTITY);
-                    }
-                if (this.quantity == null) {
-                        this.quantity = 0L;
-                    }
-                long newQty = this.quantity - amount;
-                if (newQty < 0) {
-                        throw new BadRequestException(ErrorStatus.INSUFFICIENT_MATERIAL_QUANTITY);
-                   }
-                this.quantity = newQty;
-            }
+        if (amount == null || amount <= 0) {
+            throw new BadRequestException(ErrorStatus.INVALID_QUANTITY);
+        }
+        if (this.quantity == null) {
+            this.quantity = 0L;
+        }
+        long newQty = this.quantity - amount;
+        if (newQty < 0) {
+            throw new BadRequestException(ErrorStatus.INSUFFICIENT_MATERIAL_QUANTITY);
+        }
+        this.quantity = newQty;
+    }
 }

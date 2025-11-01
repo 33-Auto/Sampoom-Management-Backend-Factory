@@ -1,5 +1,6 @@
 package com.sampoom.factory.api.material.dto;
 
+import com.sampoom.factory.api.material.entity.MaterialProjection;
 import com.sampoom.factory.api.material.entity.OrderStatus;
 import com.sampoom.factory.api.material.entity.MaterialOrder;
 import com.sampoom.factory.api.material.entity.MaterialOrderItem;
@@ -26,7 +27,8 @@ public class MaterialOrderResponseDto {
     private LocalDateTime receivedAt;
     private List<MaterialOrderItemDto> items;
 
-    public static MaterialOrderResponseDto from(MaterialOrder order, List<MaterialOrderItem> orderItems) {
+
+    public static MaterialOrderResponseDto from(MaterialOrder order, List<MaterialOrderItem> orderItems, java.util.function.Function<Long, MaterialProjection> projectionResolver) {
         return MaterialOrderResponseDto.builder()
                 .id(order.getId())
                 .code(order.getCode())
@@ -36,7 +38,7 @@ public class MaterialOrderResponseDto {
                 .orderAt(order.getOrderAt())
                 .receivedAt(order.getReceivedAt())
                 .items(orderItems.stream()
-                        .map(MaterialOrderItemDto::from)
+                        .map(item -> MaterialOrderItemDto.from(item, projectionResolver.apply(item.getMaterialId())))
                         .collect(Collectors.toList()))
                 .build();
     }

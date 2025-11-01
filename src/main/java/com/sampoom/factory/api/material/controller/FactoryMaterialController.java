@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.material.controller;
 
-import com.sampoom.factory.api.material.dto.MaterialCategoryResponseDto;
 import com.sampoom.factory.api.material.dto.MaterialResponseDto;
 import com.sampoom.factory.common.response.PageResponseDto;
 import com.sampoom.factory.api.material.service.FactoryMaterialService;
@@ -26,11 +25,11 @@ public class FactoryMaterialController {
     private final FactoryMaterialService factoryMaterialService;
     private final MaterialOrderService materialOrderService;
 
-    @Operation(summary = "자재 카테고리 조회", description = "모든 자재 카테고리를 조회합니다.")
-    @GetMapping("/material/categories")
-    public ResponseEntity<ApiResponse<List<MaterialCategoryResponseDto>>> getMaterialCategories() {
-        return ApiResponse.success(SuccessStatus.OK, factoryMaterialService.getAllMaterialCategories());
-    }
+//    @Operation(summary = "자재 카테고리 조회", description = "모든 자재 카테고리를 조회합니다.")
+//    @GetMapping("/material/categories")
+//    public ResponseEntity<ApiResponse<List<MaterialCategoryResponseDto>>> getMaterialCategories() {
+//        return ApiResponse.success(SuccessStatus.OK, factoryMaterialService.getAllMaterialCategories());
+//    }
 
     @Operation(summary = "공장별 자재 카테고리별 자재 조회", description = "특정 공장의 특정 카테고리에 속한 자재를 조회합니다.")
     @GetMapping("/{factoryId}/material/category/{categoryId}")
@@ -71,15 +70,15 @@ public class FactoryMaterialController {
                 materialOrderService.createMaterialOrder(factoryId, requestDto));
     }
 
-    @Operation(summary = "자재 주문 목록 조회", description = "공장의 자재 주문 목록을 조회합니다.")
-    @GetMapping("/{factoryId}/material/order")
-    public ResponseEntity<ApiResponse<PageResponseDto<MaterialOrderResponseDto>>> getMaterialOrders(
-            @PathVariable Long factoryId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.success(SuccessStatus.OK,
-                materialOrderService.getMaterialOrdersByFactory(factoryId, page, size));
-    }
+//    @Operation(summary = "자재 주문 목록 조회", description = "공장의 자재 주문 목록을 조회합니다.")
+//    @GetMapping("/{factoryId}/material/order")
+//    public ResponseEntity<ApiResponse<PageResponseDto<MaterialOrderResponseDto>>> getMaterialOrders(
+//            @PathVariable Long factoryId,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size) {
+//        return ApiResponse.success(SuccessStatus.OK,
+//                materialOrderService.getMaterialOrdersByFactory(factoryId, page, size));
+//    }
 
     @Operation(summary = "자재 주문 입고 처리", description = "자재 주문을 입고 처리합니다.")
     @PutMapping("/{factoryId}/material/order/{orderId}/receive")
@@ -90,37 +89,37 @@ public class FactoryMaterialController {
                 materialOrderService.receiveMaterialOrder(factoryId, orderId));
     }
 
-    @Operation(
-            summary = "자재 주문 취소",
-            description = "특정 공장의 자재 주문을 취소합니다. (받은(입고) 주문은 취소 불가)"
-    )
-    @PutMapping("/{factoryId}/material/order/{orderId}/cancel")
-    public ResponseEntity<ApiResponse<MaterialOrderResponseDto>> cancelMaterialOrder(
-            @PathVariable Long factoryId,
-            @PathVariable Long orderId) {
+//    @Operation(
+//            summary = "자재 주문 취소",
+//            description = "특정 공장의 자재 주문을 취소합니다. (받은(입고) 주문은 취소 불가)"
+//    )
+//    @PutMapping("/{factoryId}/material/order/{orderId}/cancel")
+//    public ResponseEntity<ApiResponse<MaterialOrderResponseDto>> cancelMaterialOrder(
+//            @PathVariable Long factoryId,
+//            @PathVariable Long orderId) {
+//
+//        return ApiResponse.success(
+//                SuccessStatus.OK,
+//                materialOrderService.cancelMaterialOrder(factoryId, orderId)
+//        );
+//    }
 
-        return ApiResponse.success(
-                SuccessStatus.OK,
-                materialOrderService.cancelMaterialOrder(factoryId, orderId)
-        );
-    }
+//    @Operation(summary = "자재 주문 삭제(소프트)", description = "주문 레코드를 실제로는 삭제하지 않고 숨깁니다.")
+//    @DeleteMapping("/{factoryId}/material/order/{orderId}")
+//    public ResponseEntity<ApiResponse<Void>> deleteMaterialOrder(
+//            @PathVariable Long factoryId, @PathVariable Long orderId) {
+//        materialOrderService.softDeleteMaterialOrder(factoryId, orderId);
+//        return ApiResponse.success_only(SuccessStatus.OK);
+//    }
 
-    @Operation(summary = "자재 주문 삭제(소프트)", description = "주문 레코드를 실제로는 삭제하지 않고 숨깁니다.")
-    @DeleteMapping("/{factoryId}/material/order/{orderId}")
-    public ResponseEntity<ApiResponse<Void>> deleteMaterialOrder(
-            @PathVariable Long factoryId, @PathVariable Long orderId) {
-        materialOrderService.softDeleteMaterialOrder(factoryId, orderId);
-        return ApiResponse.success_only(SuccessStatus.OK);
-    }
-
-    @Operation(summary = "자재 주문 상세 조회", description = "특정 자재 주문의 상세 정보를 조회합니다.")
-    @GetMapping("/{factoryId}/material/order/{orderId}")
-    public ResponseEntity<ApiResponse<MaterialOrderResponseDto>> getMaterialOrderDetail(
-            @PathVariable Long factoryId,
-            @PathVariable Long orderId) {
-        return ApiResponse.success(
-                SuccessStatus.OK,
-                materialOrderService.getMaterialOrderDetail(factoryId, orderId)
-        );
-    }
+//    @Operation(summary = "자재 주문 상세 조회", description = "특정 자재 주문의 상세 정보를 조회합니다.")
+//    @GetMapping("/{factoryId}/material/order/{orderId}")
+//    public ResponseEntity<ApiResponse<MaterialOrderResponseDto>> getMaterialOrderDetail(
+//            @PathVariable Long factoryId,
+//            @PathVariable Long orderId) {
+//        return ApiResponse.success(
+//                SuccessStatus.OK,
+//                materialOrderService.getMaterialOrderDetail(factoryId, orderId)
+//        );
+//    }
 }

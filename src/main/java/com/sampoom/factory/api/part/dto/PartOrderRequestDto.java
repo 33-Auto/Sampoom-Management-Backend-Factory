@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -13,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class PartOrderRequestDto {
     private String warehouseName;
+    private LocalDateTime requiredDate; // 고객이 요청한 필요일
     private List<PartOrderItemRequestDto> items;
 
     @Getter

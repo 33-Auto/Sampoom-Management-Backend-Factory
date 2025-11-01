@@ -16,7 +16,7 @@ public  class MaterialOrderItemRequestDto {
 
     public static MaterialOrderItemRequestDto from(MaterialOrderItem item) {
         return MaterialOrderItemRequestDto.builder()
-                .materialId(item.getMaterial().getId())
+                .materialId(item.getMaterialId())
                 .quantity(item.getQuantity())
                 .build();
     }
