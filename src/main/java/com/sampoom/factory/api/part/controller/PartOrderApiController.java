@@ -29,13 +29,5 @@ public class PartOrderApiController {
         return ApiResponse.success(SuccessStatus.CREATED, response);
     }
 
-    @Operation(summary = "MRP 결과 적용", description = "MRP 실행 결과를 적용합니다. 자재 부족 시 구매요청과 생산지시를 함께 처리하고, 자재 충분 시 생산지시만 처리합니다.")
-    @PostMapping("/factory/{factoryId}/part/order/{orderId}/apply-mrp")
-    public ResponseEntity<ApiResponse<PartOrderResponseDto>> applyMRPResult(
-            @PathVariable Long factoryId,
-            @PathVariable Long orderId
-    ) {
-        PartOrderResponseDto response = partOrderService.applyMRPResult(factoryId, orderId);
-        return ApiResponse.success(SuccessStatus.OK, response);
-    }
+
 }

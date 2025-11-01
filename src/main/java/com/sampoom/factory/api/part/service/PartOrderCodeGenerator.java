@@ -1,5 +1,6 @@
 package com.sampoom.factory.api.part.service;
 
+import com.sampoom.factory.api.part.entity.PartOrder;
 import com.sampoom.factory.api.part.repository.PartOrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,9 @@ public class PartOrderCodeGenerator {
         String year = now.format(DateTimeFormatter.ofPattern("yyyy"));
 
         // 해당 년도의 마지막 주문 코드 조회
-        String lastOrderCode = partOrderRepository.findLastOrderCodeByYear(year);
+        String lastOrderCode = partOrderRepository.findTopByOrderCodeStartingWithOrderByOrderCodeDesc("WO-" + year + "-")
+                .map(PartOrder::getOrderCode)
+                .orElse(null);
 
         int nextSequence = 1;
         if (lastOrderCode != null && !lastOrderCode.isEmpty()) {
