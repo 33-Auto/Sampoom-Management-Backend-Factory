@@ -10,6 +10,7 @@ import java.util.List;
 @Builder
 public class PartOrderResponseDto {
     private Long orderId;
+    private String orderCode; // WO-2025-001 형태의 주문 코드
     private String warehouseName;
     private LocalDateTime orderDate;
     private String status;

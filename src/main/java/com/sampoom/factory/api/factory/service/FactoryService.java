@@ -7,9 +7,9 @@ import com.sampoom.factory.api.factory.entity.Factory;
 
 import com.sampoom.factory.api.factory.repository.FactoryRepository;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
-import com.sampoom.factory.api.material.entity.Material;
+import com.sampoom.factory.api.material.entity.MaterialProjection;
 import com.sampoom.factory.api.material.repository.FactoryMaterialRepository;
-import com.sampoom.factory.api.material.repository.MaterialRepository;
+import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
 import com.sampoom.factory.common.exception.NotFoundException;
 import com.sampoom.factory.common.response.ErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +24,10 @@ import java.util.stream.Collectors;
 public class FactoryService {
 
     private final FactoryRepository factoryRepository;
-    private final MaterialRepository materialRepository;
+
     private final FactoryMaterialRepository factoryMaterialRepository;
     private final FactoryEventService factoryEventService;
+    private final MaterialProjectionRepository materialProjectionRepository;
 
     @Transactional
     public FactoryResponseDto createFactory(FactoryRequestDto requestDto) {
@@ -34,17 +35,16 @@ public class FactoryService {
         Factory factory = requestDto.toEntity();
         factory = factoryRepository.saveAndFlush(factory);
 
-        // 모든 재료 조회
-        List<Material> allMaterials = materialRepository.findAll();
+        // 모든 재료 projection 조회
+        List<MaterialProjection> allMaterialProjections = materialProjectionRepository.findAll();
 
-        // 각 재료에 대해 공장 자재 정보 생성 (수량 0으로 설정)
-        for (Material material : allMaterials) {
+        // 각 projection에 대해 공장 자재 정보 생성 (수량 0으로 설정)
+        for (MaterialProjection materialProjection : allMaterialProjections) {
             FactoryMaterial factoryMaterial = FactoryMaterial.builder()
                     .factory(factory)
-                    .material(material)
+                    .materialId(materialProjection.getMaterialId())
                     .quantity(0L)
                     .build();
-
             factoryMaterialRepository.save(factoryMaterial);
         }
 

@@ -1,6 +1,6 @@
 package com.sampoom.factory.api.material.dto;
 
-import com.sampoom.factory.api.material.entity.Material;
+import com.sampoom.factory.api.material.entity.MaterialProjection;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,19 +19,24 @@ public class MaterialResponseDto {
     private String materialCategoryName;
     private Long quantity;
 
-    public static MaterialResponseDto from(Material material) {
+    public static MaterialResponseDto from(MaterialProjection material) {
         return MaterialResponseDto.builder()
                 .id(material.getId())
                 .name(material.getName())
-                .unit(material.getUnit())
+                .unit(material.getMaterialUnit())
                 .materialCode(material.getCode())
-                .materialCategoryId(material.getMaterialCategory().getId())
-                .materialCategoryName(material.getMaterialCategory().getName())
+                .materialCategoryId(material.getCategoryId())
+                .materialCategoryName(null) // 서비스 계층에서 할당
                 .build();
     }
 
     public MaterialResponseDto withQuantity(Long quantity) {
         this.quantity = quantity;
+        return this;
+    }
+
+    public MaterialResponseDto withCategoryName(String categoryName) {
+        this.materialCategoryName = categoryName;
         return this;
     }
 }

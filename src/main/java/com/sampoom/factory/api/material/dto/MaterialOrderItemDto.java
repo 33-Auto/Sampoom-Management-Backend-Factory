@@ -1,6 +1,7 @@
 package com.sampoom.factory.api.material.dto;
 
 import com.sampoom.factory.api.material.entity.MaterialOrderItem;
+import com.sampoom.factory.api.material.entity.MaterialProjection;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,11 +17,13 @@ public  class MaterialOrderItemDto {
     private String unit;
     private Long quantity;
 
-    public static MaterialOrderItemDto from(MaterialOrderItem item) {
+
+
+    public static MaterialOrderItemDto from(MaterialOrderItem item, MaterialProjection materialProjection) {
         return MaterialOrderItemDto.builder()
-                .materialId(item.getMaterial().getId())
-                .materialName(item.getMaterial().getName())
-                .unit(item.getMaterial().getUnit())
+                .materialId(materialProjection.getMaterialId())
+                .materialName(materialProjection.getName())
+                .unit(materialProjection.getMaterialUnit())
                 .quantity(item.getQuantity())
                 .build();
     }

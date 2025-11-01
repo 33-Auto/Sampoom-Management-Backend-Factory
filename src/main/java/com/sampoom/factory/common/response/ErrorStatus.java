@@ -27,6 +27,7 @@ public enum ErrorStatus {
 
 
 
+
     // 401 UNAUTHORIZED
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.", 40101),
 
@@ -48,7 +49,8 @@ public enum ErrorStatus {
     CONFLICT(HttpStatus.CONFLICT, "충돌이 발생했습니다.",40901),
 
     // 500 INTERNAL_SERVER_ERROR
-    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.",40501);
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.",40501),
+    EXTERNAL_API_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "외부 API 호출 중 오류가 발생했습니다.",40502);
 
     private final HttpStatus httpStatus;
     private final String message;

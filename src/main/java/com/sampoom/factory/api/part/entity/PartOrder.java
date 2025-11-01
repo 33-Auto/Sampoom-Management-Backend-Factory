@@ -37,6 +37,9 @@ public class PartOrder {
     @Column(name = "required_date", nullable = false)
     private LocalDateTime requiredDate; // 고객이 요청한 필요일
 
+    @Column(name = "order_code", unique = true)
+    private String orderCode; // WO-2025-001 형태의 주문 코드
+
     // 새로 추가된 필드들
     @Column(name = "scheduled_date")
     private LocalDateTime scheduledDate; // MRP 실행 후 계산된 예정일
@@ -83,6 +86,10 @@ public class PartOrder {
 
     public void confirmPlan() {
         this.status = PartOrderStatus.PLAN_CONFIRMED;
+    }
+
+    public void markAsDelayed() {
+        this.status = PartOrderStatus.DELAYED;
     }
 
     public void startProgress() {

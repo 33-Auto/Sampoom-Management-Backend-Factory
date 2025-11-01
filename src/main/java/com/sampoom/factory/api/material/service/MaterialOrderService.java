@@ -5,9 +5,9 @@ import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import com.sampoom.factory.api.material.repository.FactoryMaterialRepository;
 import com.sampoom.factory.api.factory.repository.FactoryRepository;
-import com.sampoom.factory.api.material.entity.Material;
 import com.sampoom.factory.api.material.entity.OrderStatus;
-import com.sampoom.factory.api.material.repository.MaterialRepository;
+import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
+import com.sampoom.factory.api.material.entity.MaterialProjection;
 import com.sampoom.factory.api.material.dto.MaterialOrderRequestDto;
 import com.sampoom.factory.api.material.dto.MaterialOrderResponseDto;
 import com.sampoom.factory.api.material.entity.MaterialOrder;
@@ -34,8 +34,8 @@ public class MaterialOrderService {
     private final MaterialOrderRepository orderRepository;
     private final MaterialOrderItemRepository orderItemRepository;
     private final FactoryRepository factoryRepository;
-    private final MaterialRepository materialRepository;
     private final FactoryMaterialRepository factoryMaterialRepository;
+    private final MaterialProjectionRepository materialProjectionRepository;
 
     @Transactional
     public MaterialOrderResponseDto createMaterialOrder(Long factoryId, MaterialOrderRequestDto requestDto) {
@@ -53,12 +53,11 @@ public class MaterialOrderService {
 
         List<MaterialOrderItem> orderItems = requestDto.getItems().stream()
                 .map(item -> {
-                    Material material = materialRepository.findById(item.getMaterialId())
+                    MaterialProjection materialProjection = materialProjectionRepository.findByMaterialId(item.getMaterialId())
                             .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND));
-
                     return MaterialOrderItem.builder()
                             .materialOrder(order)
-                            .material(material)
+                            .materialId(materialProjection.getMaterialId())
                             .quantity(item.getQuantity())
                             .build();
                 })
@@ -66,7 +65,10 @@ public class MaterialOrderService {
 
         orderItemRepository.saveAll(orderItems);
 
-        return MaterialOrderResponseDto.from(order, orderItems);
+        return MaterialOrderResponseDto.from(order, orderItems, materialId ->
+            materialProjectionRepository.findByMaterialId(materialId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
+        );
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +82,10 @@ public class MaterialOrderService {
         List<MaterialOrderResponseDto> content = ordersPage.getContent().stream()
                 .map(order -> {
                     List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(order.getId());
-                    return MaterialOrderResponseDto.from(order, items);
+                    return MaterialOrderResponseDto.from(order, items, materialId ->
+                        materialProjectionRepository.findByMaterialId(materialId)
+                            .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
+                    );
                 })
                 .collect(Collectors.toList());
 
@@ -111,17 +116,17 @@ public class MaterialOrderService {
 
         // 각 주문 아이템에 대해 공장 자재 수량 증가
         for (MaterialOrderItem item : items) {
-            Material material = item.getMaterial();
+            Long materialId = item.getMaterialId();
             Long quantity = item.getQuantity();
 
             // 해당 공장의 자재 찾기
             FactoryMaterial factoryMaterial = factoryMaterialRepository.findByFactoryIdAndMaterialId(
-                            factoryId, material.getId())
+                            factoryId, materialId)
                     .orElseGet(() -> {
                         // 없으면 새로 생성
                         FactoryMaterial newMaterial = FactoryMaterial.builder()
                                 .factory(order.getFactory())
-                                .material(material)
+                                .materialId(materialId)
                                 .quantity(0L)
                                 .build();
                         return factoryMaterialRepository.save(newMaterial);
@@ -130,18 +135,24 @@ public class MaterialOrderService {
             // 수량 증가
             factoryMaterial.increaseQuantity(quantity);
         }
-        return MaterialOrderResponseDto.from(order, items);
+        // projection 기반 응답 생성
+        return MaterialOrderResponseDto.from(order, items, materialId ->
+            materialProjectionRepository.findByMaterialId(materialId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
+        );
     }
 
     @Transactional
-    public MaterialOrderResponseDto  cancelMaterialOrder(Long factoryId, Long orderId) {
+    public MaterialOrderResponseDto cancelMaterialOrder(Long factoryId, Long orderId) {
         MaterialOrder order = orderRepository
                 .findByIdAndFactory_Id(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
         order.cancel();
         List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
-
-        return MaterialOrderResponseDto.from(order,items);
+        return MaterialOrderResponseDto.from(order, items, materialId ->
+            materialProjectionRepository.findByMaterialId(materialId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
+        );
     }
 
     @Transactional
@@ -162,7 +173,10 @@ public class MaterialOrderService {
         MaterialOrder order = orderRepository.findByIdAndFactory_Id(orderId, factoryId )
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
         List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
-        return MaterialOrderResponseDto.from(order,items);
+        return MaterialOrderResponseDto.from(order, items, materialId ->
+            materialProjectionRepository.findByMaterialId(materialId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
+        );
     }
 
     private String generateOrderCode() {

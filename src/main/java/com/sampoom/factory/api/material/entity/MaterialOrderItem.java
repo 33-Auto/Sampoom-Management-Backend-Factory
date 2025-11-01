@@ -21,11 +21,8 @@ public class MaterialOrderItem {
     @JoinColumn(name = "material_order_id")
     private MaterialOrder materialOrder;
 
-
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "material_id")
-    private Material material;
+    @Column(name = "material_id")
+    private Long materialId;
 
 
 }

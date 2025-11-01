@@ -20,9 +20,8 @@ public class PartOrderItem {
     @JoinColumn(name = "part_order_id", nullable = false)
     private PartOrder partOrder;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_id", nullable = false)
-    private Part part;
+    @Column(name = "part_id", nullable = false)
+    private Long partId;
 
     @Column(nullable = false)
     private Long quantity;
