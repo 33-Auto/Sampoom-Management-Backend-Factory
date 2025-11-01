@@ -21,6 +21,10 @@ public class PartOrder {
     @Column(name = "part_order_id")
     private Long id;
 
+    @Version
+    @Column(name = "version")
+    private Long version; // 낙관적 락을 위한 버전 필드
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factory_id", nullable = false)
     private Factory factory;

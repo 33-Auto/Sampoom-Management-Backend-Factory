@@ -135,10 +135,11 @@ public class PartOrderService {
         return false; // 자재 충분
     }
 
-    // MRP 실행 API (별도 분리)
+    // MRP 실행 API (별도 분리) - 동시성 제어 추가
     @Transactional
     public PartOrderResponseDto executeMRP(Long factoryId, Long orderId) {
-        PartOrder partOrder = partOrderRepository.findByIdAndFactoryId(orderId, factoryId)
+        // 비관적 락을 사용하여 동시성 제어
+        PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
 
         if (partOrder.getStatus() != PartOrderStatus.UNDER_REVIEW) {
@@ -271,8 +272,15 @@ public class PartOrderService {
     // 주문 완료 처리
     @Transactional
     public PartOrderResponseDto completePartOrder(Long factoryId, Long orderId) {
-        PartOrder partOrder = partOrderRepository.findByIdAndFactoryId(orderId, factoryId)
+        // 비관적 락을 사용하여 동시성 제어
+        PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
+
+        // 이미 완료된 상태인 경우 중복 처리 방지
+        if (partOrder.getStatus() == PartOrderStatus.COMPLETED) {
+            log.warn("주문이 이미 완료 상태입니다 - 주문 ID: {}", partOrder.getId());
+            return toResponseDto(partOrder);
+        }
 
         if (partOrder.getStatus() != PartOrderStatus.IN_PROGRESS) {
             throw new BadRequestException(ErrorStatus.ORDER_NOT_IN_PROGRESS);
@@ -419,16 +427,23 @@ public class PartOrderService {
         return optimalFactory;
     }
 
-    // 생산지시 API (계획확정 상태에서 진행중으로 변경)
+    // 생산지시 API (계획확정 상태에서 진행중으로 변경) - 동시성 제어 추가
     @Transactional
     public PartOrderResponseDto startProduction(Long factoryId, Long orderId) {
-        PartOrder partOrder = partOrderRepository.findByIdAndFactoryId(orderId, factoryId)
+        // 비관적 락을 사용하여 동시성 제어
+        PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
 
         // PLAN_CONFIRMED 또는 DELAYED 상태에서 생산지시 가능
         if (partOrder.getStatus() != PartOrderStatus.PLAN_CONFIRMED &&
             partOrder.getStatus() != PartOrderStatus.DELAYED) {
             throw new BadRequestException(ErrorStatus.INVALID_ORDER_STATUS);
+        }
+
+        // 이미 진행중인 상태인 경우 중복 처리 방지
+        if (partOrder.getStatus() == PartOrderStatus.IN_PROGRESS) {
+            log.warn("주문이 이미 진행중 상태입니다 - 주문 ID: {}", partOrder.getId());
+            return toResponseDto(partOrder);
         }
 
         // 진행중 상태로 변경
@@ -447,10 +462,11 @@ public class PartOrderService {
         return toResponseDto(partOrder);
     }
 
-    // MRP 결과 적용 API (클라이언트의 "결과적용" 버튼)
+    // MRP 결과 적용 API (클라이언트의 "결과적용" 버튼) - 동시성 제어 추가
     @Transactional
     public PartOrderResponseDto applyMRPResult(Long factoryId, Long orderId) {
-        PartOrder partOrder = partOrderRepository.findByIdAndFactoryId(orderId, factoryId)
+        // 비관적 락을 사용하여 동시성 제어
+        PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
 
         // PLAN_CONFIRMED 또는 DELAYED 상태에서만 결과 적용 가능
@@ -459,19 +475,33 @@ public class PartOrderService {
             throw new BadRequestException(ErrorStatus.INVALID_ORDER_STATUS);
         }
 
+        // 이미 진행중인 상태로 변경된 경우 중복 처리 방지
+        if (partOrder.getStatus() == PartOrderStatus.IN_PROGRESS) {
+            log.warn("주문이 이미 진행중 상태입니다 - 주문 ID: {}", partOrder.getId());
+            return toResponseDto(partOrder);
+        }
+
         if (partOrder.getMaterialAvailability() == MaterialAvailability.INSUFFICIENT) {
             // 자재 부족 시: 자재 구매요청 + 생산지시
             log.info("자재 부족으로 구매요청 및 생산지시 동시 진행 - 주문 ID: {}", partOrder.getId());
 
-            // 1. 자재 구매요청 처리
-            requestMaterialPurchase(partOrder);
+            try {
+                // 1. 먼저 자재 구매요청 처리 (실패 가능한 작업을 먼저 수행)
+                requestMaterialPurchase(partOrder);
 
-            // 2. 생산지시 처리 (부족한 자재는 구매 예정이므로 생산 준비)
-            partOrder.startProgress();
-            log.info("자재 구매요청과 함께 생산지시 완료 - 주문 ID: {}", partOrder.getId());
+                // 2. 구매요청이 성공한 경우에만 상태 변경
+                partOrder.startProgress();
+                log.info("자재 구매요청과 함께 생산지시 완료 - 주문 ID: {}", partOrder.getId());
+
+            } catch (Exception e) {
+                log.error("자재 구매요청 실패로 인한 MRP 결과 적용 실패 - 주문 ID: {}, 오류: {}",
+                    partOrder.getId(), e.getMessage(), e);
+                // 구매요청 실패 시 전체 트랜잭션 롤백을 위해 예외 재발생
+                throw new BadRequestException(ErrorStatus.EXTERNAL_API_ERROR);
+            }
 
         } else {
-            // 자재 충분 시: 생산지시만
+            // 자재 충분 시: 생산지시만 (외부 API 호출 없음)
             log.info("자재 충분으로 생산지시만 진행 - 주문 ID: {}", partOrder.getId());
 
             // 생산지시 처리
