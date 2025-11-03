@@ -1,6 +1,7 @@
 package com.sampoom.factory.api.part.repository;
 
 import com.sampoom.factory.api.part.entity.PartOrder;
+import com.sampoom.factory.api.part.entity.PartOrderPriority;
 import com.sampoom.factory.api.part.entity.PartOrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,12 @@ public interface PartOrderRepository extends JpaRepository<PartOrder,Long> {
 
     @EntityGraph(attributePaths = {"items"})
     Page<PartOrder> findByFactoryIdAndStatusIn(Long factoryId, List<PartOrderStatus> statuses, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    Page<PartOrder> findByFactoryIdAndPriorityIn(Long factoryId, List<PartOrderPriority> priorities, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    Page<PartOrder> findByFactoryIdAndStatusInAndPriorityIn(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities, Pageable pageable);
 
     Optional<PartOrder> findTopByOrderCodeStartingWithOrderByOrderCodeDesc(String orderCodePrefix);
 }

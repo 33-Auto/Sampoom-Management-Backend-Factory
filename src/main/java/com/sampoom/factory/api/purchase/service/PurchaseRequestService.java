@@ -25,12 +25,14 @@ public class PurchaseRequestService {
             if (response.getSuccess()) {
                 log.info("구매요청 API 호출 성공 - 공장ID: {}", purchaseRequest.getFactoryId());
             } else {
-                log.warn("구매요청 API 호출 실패 - 응답: {}", response.getMessage());
+                log.error("구매요청 API 호출 실패 - 응답: {}", response.getMessage());
+                throw new RuntimeException("구매요청 API 호출 실패: " + response.getMessage());
             }
 
         } catch (Exception e) {
             log.error("구매요청 API 호출 중 예외 발생: {}", e.getMessage(), e);
-            // 예외가 발생해도 전체 주문 프로세스는 계속 진행
+            // 예외를 다시 던져서 호출하는 쪽에서 처리할 수 있도록 함
+            throw new RuntimeException("구매요청 API 호출 실패: " + e.getMessage(), e);
         }
     }
 }
