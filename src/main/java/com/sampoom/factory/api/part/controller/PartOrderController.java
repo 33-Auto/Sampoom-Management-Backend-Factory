@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/{factoryId}/part")
@@ -71,15 +73,15 @@ public class PartOrderController {
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 
-    @Operation(summary = "부품 주문 목록 조회", description = "공장의 부품 주문 목록을 조회합니다.")
+    @Operation(summary = "부품 주문 목록 조회", description = "공장의 부품 주문 목록을 조회합니다. 여러 상태를 동시에 필터링할 수 있습니다.")
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<PageResponseDto<PartOrderResponseDto>>> getPartOrders(
             @PathVariable Long factoryId,
-            @RequestParam(required = false) PartOrderStatus status,
+            @RequestParam(required = false) List<PartOrderStatus> statuses,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PageResponseDto<PartOrderResponseDto> response = partOrderService.getPartOrders(factoryId, status, page, size);
+        PageResponseDto<PartOrderResponseDto> response = partOrderService.getPartOrders(factoryId, statuses, page, size);
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 

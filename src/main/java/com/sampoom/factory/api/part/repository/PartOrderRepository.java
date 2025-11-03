@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 
 public interface PartOrderRepository extends JpaRepository<PartOrder,Long> {
@@ -30,6 +31,9 @@ public interface PartOrderRepository extends JpaRepository<PartOrder,Long> {
 
     @EntityGraph(attributePaths = {"items"})
     Page<PartOrder> findByFactoryIdAndStatus(Long factoryId, PartOrderStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    Page<PartOrder> findByFactoryIdAndStatusIn(Long factoryId, List<PartOrderStatus> statuses, Pageable pageable);
 
     Optional<PartOrder> findTopByOrderCodeStartingWithOrderByOrderCodeDesc(String orderCodePrefix);
 }

@@ -349,6 +349,35 @@ public class PartOrderService {
                 .build();
     }
 
+    // 주문 목록 조회 - 여러 상태 필터링 지원
+    public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, int page, int size) {
+        factoryRepository.findById(factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PartOrder> partOrderPage;
+
+        if (statuses != null && !statuses.isEmpty()) {
+            partOrderPage = partOrderRepository.findByFactoryIdAndStatusIn(factoryId, statuses, pageable);
+        } else {
+            partOrderPage = partOrderRepository.findByFactoryId(factoryId, pageable);
+        }
+
+        List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
+                .map(partOrder -> {
+                    // 각 주문의 진행률 업데이트
+                    partOrder.calculateProgressByDate();
+                    return toResponseDto(partOrder);
+                })
+                .collect(Collectors.toList());
+
+        return PageResponseDto.<PartOrderResponseDto>builder()
+                .content(content)
+                .totalElements(partOrderPage.getTotalElements())
+                .totalPages(partOrderPage.getTotalPages())
+                .build();
+    }
+
     // DTO 변환 메서드
     private PartOrderResponseDto toResponseDto(PartOrder partOrder) {
         List<PartOrderResponseDto.PartOrderItemDto> itemDtos = partOrder.getItems().stream()
