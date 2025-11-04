@@ -68,7 +68,7 @@ public class PartOrderService {
                 .warehouseName(request.getWarehouseName())
                 .orderDate(LocalDateTime.now())
                 .requiredDate(request.getRequiredDate()) // 고객 요청 필요일 설정
-                .orderCode(orderCode) // 자동 생성된 주문 코드 설정
+                .orderCode(orderCode) // 자동 ���성된 주문 코드 설정
                 .build();
 
         List<PartOrderItem> items = new ArrayList<>();
@@ -148,6 +148,48 @@ public class PartOrderService {
 
         executeMRPLogic(partOrder);
         return toResponseDto(partOrder);
+    }
+
+    // 일괄 MRP 실행 API
+    @Transactional
+    public List<PartOrderResponseDto> executeBatchMRP(Long factoryId, List<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new BadRequestException(ErrorStatus.BAD_REQUEST);
+        }
+
+        log.info("일괄 MRP 실행 시작 - 공장 ID: {}, 주문 수: {}", factoryId, orderIds.size());
+
+        List<PartOrderResponseDto> results = new ArrayList<>();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Long orderId : orderIds) {
+            try {
+                // 각 주문에 대해 개별적으로 MRP 실행
+                PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
+                        .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
+
+                if (partOrder.getStatus() != PartOrderStatus.UNDER_REVIEW) {
+                    log.warn("MRP 실행 불가 - 주문 ID: {}, 현재 상태: {}", orderId, partOrder.getStatus());
+                    failCount++;
+                    continue;
+                }
+
+                executeMRPLogic(partOrder);
+                results.add(toResponseDto(partOrder));
+                successCount++;
+
+                log.info("MRP 실행 완료 - 주문 ID: {}", orderId);
+
+            } catch (Exception e) {
+                log.error("MRP 실행 실패 - 주문 ID: {}, 오류: {}", orderId, e.getMessage(), e);
+                failCount++;
+                // 개별 실패는 전체 작업을 중단하지 않음
+            }
+        }
+
+        log.info("일괄 MRP 실행 완료 - 공장 ID: {}, 성공: {}, 실패: {}", factoryId, successCount, failCount);
+        return results;
     }
 
     // MRP 실행 로직
@@ -378,6 +420,40 @@ public class PartOrderService {
                 .build();
     }
 
+    // 주문 목록 조회 - 여러 상태와 우선순위 필터링 지원
+    public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities, int page, int size) {
+        factoryRepository.findById(factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PartOrder> partOrderPage;
+
+        // 상태와 우선순위 조건에 따른 쿼리 선택
+        if ((statuses != null && !statuses.isEmpty()) && (priorities != null && !priorities.isEmpty())) {
+            partOrderPage = partOrderRepository.findByFactoryIdAndStatusInAndPriorityIn(factoryId, statuses, priorities, pageable);
+        } else if (statuses != null && !statuses.isEmpty()) {
+            partOrderPage = partOrderRepository.findByFactoryIdAndStatusIn(factoryId, statuses, pageable);
+        } else if (priorities != null && !priorities.isEmpty()) {
+            partOrderPage = partOrderRepository.findByFactoryIdAndPriorityIn(factoryId, priorities, pageable);
+        } else {
+            partOrderPage = partOrderRepository.findByFactoryId(factoryId, pageable);
+        }
+
+        List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
+                .map(partOrder -> {
+                    // 각 주문의 진행률 업데이트
+                    partOrder.calculateProgressByDate();
+                    return toResponseDto(partOrder);
+                })
+                .collect(Collectors.toList());
+
+        return PageResponseDto.<PartOrderResponseDto>builder()
+                .content(content)
+                .totalElements(partOrderPage.getTotalElements())
+                .totalPages(partOrderPage.getTotalPages())
+                .build();
+    }
+
     // DTO 변환 메서드
     private PartOrderResponseDto toResponseDto(PartOrder partOrder) {
         List<PartOrderResponseDto.PartOrderItemDto> itemDtos = partOrder.getItems().stream()
@@ -544,11 +620,81 @@ public class PartOrderService {
         return toResponseDto(partOrder);
     }
 
-    // 자재 구매요청 처리 (자재 부족 시 호출) - 실제 API 호출로 변경
+    // 일괄 MRP 결과 적용 API
+    @Transactional
+    public List<PartOrderResponseDto> applyBatchMRPResult(Long factoryId, List<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new BadRequestException(ErrorStatus.BAD_REQUEST);
+        }
+
+        log.info("일괄 MRP 결과 적용 시작 - 공장 ID: {}, 주문 수: {}", factoryId, orderIds.size());
+
+        List<PartOrderResponseDto> results = new ArrayList<>();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Long orderId : orderIds) {
+            try {
+                // 각 주문에 대해 개별적으로 MRP 결과 적용
+                PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
+                        .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
+
+                // 상태 검증
+                if (partOrder.getStatus() != PartOrderStatus.PLAN_CONFIRMED &&
+                    partOrder.getStatus() != PartOrderStatus.DELAYED) {
+                    log.warn("MRP 결과 적용 불가 - 주문 ID: {}, 현재 상태: {}", orderId, partOrder.getStatus());
+                    failCount++;
+                    continue;
+                }
+
+                // 이미 진행중인 상태인 경우 스킵
+                if (partOrder.getStatus() == PartOrderStatus.IN_PROGRESS) {
+                    log.warn("주문이 이미 진행중 상태 - 주문 ID: {}", orderId);
+                    results.add(toResponseDto(partOrder));
+                    successCount++;
+                    continue;
+                }
+
+                // MRP 결과 적용 로직
+                if (partOrder.getMaterialAvailability() == MaterialAvailability.INSUFFICIENT) {
+                    // 자재 부족 시: 자재 구매요청 + 생산지시
+                    try {
+                        requestMaterialPurchase(partOrder);
+                        partOrder.startProgress();
+                        log.info("자재 구매요청과 함께 생산지시 완료 - 주문 ID: {}", orderId);
+                    } catch (Exception e) {
+                        log.error("자재 구매요청 실패 - 주문 ID: {}, 오류: {}", orderId, e.getMessage());
+                        failCount++;
+                        continue;
+                    }
+                } else {
+                    // 자재 충분 시: 생산지시만
+                    partOrder.startProgress();
+                    deductMaterials(partOrder);
+                    log.info("생산지시 완료 및 자재 차감 - 주문 ID: {}", orderId);
+                }
+
+                partOrderRepository.save(partOrder);
+                results.add(toResponseDto(partOrder));
+                successCount++;
+
+            } catch (Exception e) {
+                log.error("MRP 결과 적용 실패 - 주문 ID: {}, 오류: {}", orderId, e.getMessage(), e);
+                failCount++;
+                // 개별 실패는 전체 작업을 중단하지 않음
+            }
+        }
+
+        log.info("일괄 MRP 결과 적용 완료 - 공장 ID: {}, 성공: {}, 실패: {}", factoryId, successCount, failCount);
+        return results;
+    }
+
+    // 자재 구매요청 처리 (자재 부족 시 호출) - 종류별 단건 요청으로 변경
     private void requestMaterialPurchase(PartOrder partOrder) {
         log.info("자재 구매요청 처리 시작 - 주문 ID: {}", partOrder.getId());
 
-        List<PurchaseRequestDto.PurchaseItemDto> purchaseItems = new ArrayList<>();
+        // 자재별로 부족량을 집계
+        Map<Long, MaterialPurchaseInfo> materialRequirements = new HashMap<>();
 
         for (PartOrderItem item : partOrder.getItems()) {
             BomProjection bomProjection = bomProjectionRepository.findByPartId(item.getPartId())
@@ -565,48 +711,107 @@ public class PartOrderService {
 
                 if (currentStock < required) {
                     long shortageAmount = required - currentStock;
-                    var materialProjection = materialProjectionRepository.findByMaterialId(bomMaterial.getMaterialId());
-
-                    String materialCode = materialProjection.map(mp -> mp.getCode()).orElse("MTL-" + bomMaterial.getMaterialId());
-                    String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
-                    String unit = materialProjection.map(mp -> mp.getMaterialUnit()).orElse("EA"); // materialUnit 필드 사용
-                    Long unitPrice = 1000L; // 기본 단가 (MaterialProjection에 unitPrice 필드가 없으므로 고정값 사용)
-
-                    // 구매요청 아이템 추가
-                    purchaseItems.add(PurchaseRequestDto.PurchaseItemDto.builder()
-                            .materialCode(materialCode)
-                            .materialName(materialName)
-                            .unit(unit)
-                            .quantity(shortageAmount)
-                            .unitPrice(unitPrice)
-                            .build());
-
-                    log.info("자재 구매요청 아이템 추가 - 자재코드: {}, 자재명: {}, 부족수량: {}, 단가: {}",
-                        materialCode, materialName, shortageAmount, unitPrice);
+                    
+                    // 이미 집계된 자재가 있으면 부족량을 추가
+                    materialRequirements.merge(bomMaterial.getMaterialId(), 
+                        new MaterialPurchaseInfo(bomMaterial.getMaterialId(), shortageAmount),
+                        (existing, newInfo) -> new MaterialPurchaseInfo(
+                            existing.getMaterialId(), 
+                            existing.getShortageAmount() + newInfo.getShortageAmount())
+                    );
                 }
             }
         }
 
-        // 구매요청 아이템이 있는 경우에만 API 호출
-        if (!purchaseItems.isEmpty()) {
-            PurchaseRequestDto purchaseRequest = PurchaseRequestDto.builder()
-                    .factoryId(partOrder.getFactory().getId())
-                    .factoryName(partOrder.getFactory().getName())
-                    .requiredAt(partOrder.getRequiredDate().toLocalDate()) // 필요일로 설정
-                    .requesterName("MRP 시스템") // 시스템 자동 요청
-                    .items(purchaseItems)
-                    .build();
+        // 자재별로 개별 구매요청 생성 및 전송
+        int successCount = 0;
+        int failCount = 0;
+        List<String> failedMaterials = new ArrayList<>();
+        
+        for (MaterialPurchaseInfo materialInfo : materialRequirements.values()) {
+            try {
+                var materialProjection = materialProjectionRepository.findByMaterialId(materialInfo.getMaterialId());
 
-            // 외부 구매요청 API 호출
-            purchaseRequestService.sendPurchaseRequest(purchaseRequest);
+                String materialCode = materialProjection.map(mp -> mp.getCode()).orElse("MTL-" + materialInfo.getMaterialId());
+                String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
+                String unit = materialProjection.map(mp -> mp.getMaterialUnit()).orElse("EA");
+                Long unitPrice = 1000L; // 기본 단가
 
-            log.info("자재 구매요청 API 호출 완료 - 주문 ID: {}, 구매아이템 수: {}",
-                partOrder.getId(), purchaseItems.size());
-        } else {
-            log.info("구매요청할 자재가 없습니다 - 주문 ID: {}", partOrder.getId());
+                // 단일 자재로 구매요청 아이템 생성
+                List<PurchaseRequestDto.PurchaseItemDto> singleMaterialItem = List.of(
+                    PurchaseRequestDto.PurchaseItemDto.builder()
+                            .materialCode(materialCode)
+                            .materialName(materialName)
+                            .unit(unit)
+                            .quantity(materialInfo.getShortageAmount())
+                            .unitPrice(unitPrice)
+                            .build()
+                );
+
+                // 개별 구매요청 생성
+                PurchaseRequestDto purchaseRequest = PurchaseRequestDto.builder()
+                        .factoryId(partOrder.getFactory().getId())
+                        .factoryName(partOrder.getFactory().getName())
+                        .requiredAt(partOrder.getRequiredDate().toLocalDate())
+                        .requesterName("MRP 시스템")
+                        .items(singleMaterialItem)
+                        .build();
+
+                // 개별 구매요청 API 호출
+                purchaseRequestService.sendPurchaseRequest(purchaseRequest);
+                
+                log.info("자재 개별 구매요청 성공 - 주문 ID: {}, 자재코드: {}, 자재명: {}, 부족수량: {}", 
+                    partOrder.getId(), materialCode, materialName, materialInfo.getShortageAmount());
+                
+                successCount++;
+                
+            } catch (Exception e) {
+                String materialName = materialProjectionRepository.findByMaterialId(materialInfo.getMaterialId())
+                    .map(mp -> mp.getName())
+                    .orElse("UNKNOWN");
+                
+                failedMaterials.add(materialName);
+                
+                log.error("자재 개별 구매요청 실패 - 주문 ID: {}, 자재 ID: {}, 자재명: {}, 오류: {}", 
+                    partOrder.getId(), materialInfo.getMaterialId(), materialName, e.getMessage());
+                failCount++;
+            }
         }
 
-        log.info("자재 구매요청 처리 완료 - 주문 ID: {}", partOrder.getId());
+        if (materialRequirements.isEmpty()) {
+            log.info("구매요청할 자재가 없습니다 - 주문 ID: {}", partOrder.getId());
+        } else {
+            log.info("자재 구매요청 처리 완료 - 주문 ID: {}, 성공: {}, 실패: {}, 총 자재 종류: {}", 
+                partOrder.getId(), successCount, failCount, materialRequirements.size());
+        }
+
+        // 하나라도 실패한 경우 상세한 예외 발생
+        if (failCount > 0) {
+            String errorMessage = String.format(
+                "자재 구매요청이 실패했습니다. 성공: %d, 실패: %d. 실패한 자재: %s",
+                successCount, failCount, String.join(", ", failedMaterials)
+            );
+            throw new RuntimeException(errorMessage);
+        }
+    }
+
+    // 자재 구매 정보를 담는 내부 클래스
+    private static class MaterialPurchaseInfo {
+        private final Long materialId;
+        private final Long shortageAmount;
+
+        public MaterialPurchaseInfo(Long materialId, Long shortageAmount) {
+            this.materialId = materialId;
+            this.shortageAmount = shortageAmount;
+        }
+
+        public Long getMaterialId() {
+            return materialId;
+        }
+
+        public Long getShortageAmount() {
+            return shortageAmount;
+        }
     }
 
     // 자재 차감 projection 기반으로 변경
@@ -623,5 +828,48 @@ public class PartOrderService {
                 factoryMaterial.decreaseQuantity(required);
             }
         }
+    }
+
+    // 부품 주문 생성 (아이템별 단건 주문 생성)
+    @Transactional
+    public List<PartOrderResponseDto> createPartOrdersSeparately(PartOrderRequestDto request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BadRequestException(ErrorStatus.BAD_REQUEST);
+        }
+
+        log.info("부품 주문 단건 생성 시작 - 아이템 수: {}, 창고명: {}",
+            request.getItems().size(), request.getWarehouseName());
+
+        List<PartOrderResponseDto> results = new ArrayList<>();
+
+        // 각 아이템별로 개별 주문 생성
+        for (PartOrderRequestDto.PartOrderItemRequestDto item : request.getItems()) {
+            try {
+                // 단일 아이템으로 요청 DTO 생성
+                PartOrderRequestDto singleItemRequest = PartOrderRequestDto.builder()
+                        .warehouseName(request.getWarehouseName())
+                        .requiredDate(request.getRequiredDate())
+                        .items(List.of(item)) // 단일 아이템만 포함
+                        .build();
+
+                // 개별 주문 생성
+                PartOrderResponseDto orderResult = createPartOrder(singleItemRequest);
+                results.add(orderResult);
+
+                log.info("개별 부품 주문 생성 완료 - 주문 ID: {}, 부품 ID: {}, 수량: {}",
+                    orderResult.getOrderId(), item.getPartId(), item.getQuantity());
+
+            } catch (Exception e) {
+                log.error("개별 부품 주문 생성 실패 - 부품 ID: {}, 수량: {}, 오류: {}",
+                    item.getPartId(), item.getQuantity(), e.getMessage(), e);
+                // 개별 주문 실패 시에도 다른 주문은 계속 처리
+                // 하지만 실패한 아이템에 대한 정보는 로그로 남김
+            }
+        }
+
+        log.info("부품 주문 단건 생성 완료 - 총 아이템: {}, 성공한 주문: {}",
+            request.getItems().size(), results.size());
+
+        return results;
     }
 }

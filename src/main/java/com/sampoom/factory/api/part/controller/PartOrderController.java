@@ -2,6 +2,7 @@ package com.sampoom.factory.api.part.controller;
 
 import com.sampoom.factory.api.part.dto.PartOrderRequestDto;
 import com.sampoom.factory.api.part.dto.PartOrderResponseDto;
+import com.sampoom.factory.api.part.entity.PartOrderPriority;
 import com.sampoom.factory.api.part.entity.PartOrderStatus;
 import com.sampoom.factory.api.part.service.PartOrderService;
 import com.sampoom.factory.common.response.ApiResponse;
@@ -53,6 +54,16 @@ public class PartOrderController {
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 
+    @Operation(summary = "일괄 MRP 실행", description = "여러 부품 주문에 대해 MRP를 일괄 실행합니다.")
+    @PostMapping("/orders/mrp/batch")
+    public ResponseEntity<ApiResponse<List<PartOrderResponseDto>>> executeBatchMRP(
+            @PathVariable Long factoryId,
+            @RequestBody List<Long> orderIds
+    ) {
+        List<PartOrderResponseDto> response = partOrderService.executeBatchMRP(factoryId, orderIds);
+        return ApiResponse.success(SuccessStatus.OK, response);
+    }
+
     @Operation(summary = "생산지시", description = "계획확정된 부품 주문을 진행중 상태로 변경합니다.")
     @PostMapping("/order/{orderId}/start-production")
     public ResponseEntity<ApiResponse<PartOrderResponseDto>> startProduction(
@@ -73,15 +84,16 @@ public class PartOrderController {
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 
-    @Operation(summary = "부품 주문 목록 조회", description = "공장의 부품 주문 목록을 조회합니다. 여러 상태를 동시에 필터링할 수 있습니다.")
+    @Operation(summary = "부품 주문 목록 조회", description = "공장의 부품 주문 목록을 조회합니다. 여러 상태와 우선순위를 동시에 필터링할 수 있습니다.")
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<PageResponseDto<PartOrderResponseDto>>> getPartOrders(
             @PathVariable Long factoryId,
             @RequestParam(required = false) List<PartOrderStatus> statuses,
+            @RequestParam(required = false) List<PartOrderPriority> priorities,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PageResponseDto<PartOrderResponseDto> response = partOrderService.getPartOrders(factoryId, statuses, page, size);
+        PageResponseDto<PartOrderResponseDto> response = partOrderService.getPartOrders(factoryId, statuses, priorities, page, size);
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 
@@ -92,6 +104,16 @@ public class PartOrderController {
             @PathVariable Long orderId
     ) {
         PartOrderResponseDto response = partOrderService.applyMRPResult(factoryId, orderId);
+        return ApiResponse.success(SuccessStatus.OK, response);
+    }
+
+    @Operation(summary = "일괄 MRP 결과 적용", description = "여러 부품 주문에 대해 MRP 결과를 일괄 적용합니다.")
+    @PostMapping("/orders/apply-mrp/batch")
+    public ResponseEntity<ApiResponse<List<PartOrderResponseDto>>> applyBatchMRPResult(
+            @PathVariable Long factoryId,
+            @RequestBody List<Long> orderIds
+    ) {
+        List<PartOrderResponseDto> response = partOrderService.applyBatchMRPResult(factoryId, orderIds);
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 }

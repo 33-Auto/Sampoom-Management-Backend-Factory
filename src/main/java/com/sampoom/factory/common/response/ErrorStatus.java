@@ -28,6 +28,7 @@ public enum ErrorStatus {
 
 
 
+
     // 401 UNAUTHORIZED
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.", 40101),
 
