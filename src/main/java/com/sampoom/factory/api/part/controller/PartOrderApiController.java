@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 
@@ -20,12 +22,12 @@ public class PartOrderApiController {
 
     private final PartOrderService partOrderService;
 
-    @Operation(summary = "부품 주문 생성", description = "적절한 공장을 자동으로 선택하여 부품 주문을 생성합니다.")
+    @Operation(summary = "부품 주문 생성", description = "적절한 공장을 자동으로 선택하여 부품 주문을 생성합니다. 여러 아이템이 있는 경우 각각 단건으로 나누어 개별 주문을 생성합니다.")
     @PostMapping("/part/order")
-    public ResponseEntity<ApiResponse<PartOrderResponseDto>> createPartOrder(
+    public ResponseEntity<ApiResponse<List<PartOrderResponseDto>>> createPartOrder(
             @RequestBody PartOrderRequestDto request
     ) {
-        PartOrderResponseDto response = partOrderService.createPartOrder(request);
+        List<PartOrderResponseDto> response = partOrderService.createPartOrdersSeparately(request);
         return ApiResponse.success(SuccessStatus.CREATED, response);
     }
 

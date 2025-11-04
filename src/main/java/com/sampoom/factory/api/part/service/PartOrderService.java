@@ -829,4 +829,47 @@ public class PartOrderService {
             }
         }
     }
+
+    // 부품 주문 생성 (아이템별 단건 주문 생성)
+    @Transactional
+    public List<PartOrderResponseDto> createPartOrdersSeparately(PartOrderRequestDto request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BadRequestException(ErrorStatus.BAD_REQUEST);
+        }
+
+        log.info("부품 주문 단건 생성 시작 - 아이템 수: {}, 창고명: {}",
+            request.getItems().size(), request.getWarehouseName());
+
+        List<PartOrderResponseDto> results = new ArrayList<>();
+
+        // 각 아이템별로 개별 주문 생성
+        for (PartOrderRequestDto.PartOrderItemRequestDto item : request.getItems()) {
+            try {
+                // 단일 아이템으로 요청 DTO 생성
+                PartOrderRequestDto singleItemRequest = PartOrderRequestDto.builder()
+                        .warehouseName(request.getWarehouseName())
+                        .requiredDate(request.getRequiredDate())
+                        .items(List.of(item)) // 단일 아이템만 포함
+                        .build();
+
+                // 개별 주문 생성
+                PartOrderResponseDto orderResult = createPartOrder(singleItemRequest);
+                results.add(orderResult);
+
+                log.info("개별 부품 주문 생성 완료 - 주문 ID: {}, 부품 ID: {}, 수량: {}",
+                    orderResult.getOrderId(), item.getPartId(), item.getQuantity());
+
+            } catch (Exception e) {
+                log.error("개별 부품 주문 생성 실패 - 부품 ID: {}, 수량: {}, 오류: {}",
+                    item.getPartId(), item.getQuantity(), e.getMessage(), e);
+                // 개별 주문 실패 시에도 다른 주문은 계속 처리
+                // 하지만 실패한 아이템에 대한 정보는 로그로 남김
+            }
+        }
+
+        log.info("부품 주문 단건 생성 완료 - 총 아이템: {}, 성공한 주문: {}",
+            request.getItems().size(), results.size());
+
+        return results;
+    }
 }
