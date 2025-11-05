@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.part.entity;
 
-import com.sampoom.factory.api.factory.entity.Factory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,9 +24,8 @@ public class PartOrder {
     @Column(name = "version")
     private Long version; // 낙관적 락을 위한 버전 필드
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "factory_id", nullable = false)
-    private Factory factory;
+    @Column(name = "factory_id", nullable = false)
+    private Long factoryId;
 
     @Enumerated(EnumType.STRING)
     private PartOrderStatus status;

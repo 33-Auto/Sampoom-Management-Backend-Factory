@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface MaterialOrderRepository extends JpaRepository<MaterialOrder,Long> {
     Page<MaterialOrder> findByFactoryId(Long factoryId, Pageable pageable);
 
-    Optional<MaterialOrder> findByIdAndFactory_Id(Long orderId, Long factoryId);
+    Optional<MaterialOrder> findByIdAndFactoryId(Long orderId, Long factoryId);
 }

@@ -23,7 +23,7 @@ public interface PartOrderRepository extends JpaRepository<PartOrder,Long> {
     // 비관적 락을 사용하는 조회 메서드 추가
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"items"})
-    @Query("SELECT po FROM PartOrder po WHERE po.id = :id AND po.factory.id = :factoryId")
+    @Query("SELECT po FROM PartOrder po WHERE po.id = :id AND po.factoryId = :factoryId")
     Optional<PartOrder> findByIdAndFactoryIdWithLock(@Param("id") Long id, @Param("factoryId") Long factoryId);
 
 

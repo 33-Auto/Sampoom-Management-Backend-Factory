@@ -28,5 +28,6 @@ public class MaterialEventDto {
         private Integer leadTime;
         private Boolean deleted;
         private Long materialCategoryId;
+        private Long standardCost;
     }
 }

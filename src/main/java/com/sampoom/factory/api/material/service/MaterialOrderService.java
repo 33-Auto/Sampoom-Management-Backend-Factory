@@ -1,10 +1,10 @@
 package com.sampoom.factory.api.material.service;
 
 import com.sampoom.factory.common.response.PageResponseDto;
-import com.sampoom.factory.api.factory.entity.Factory;
+import com.sampoom.factory.api.factory.entity.FactoryProjection;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import com.sampoom.factory.api.material.repository.FactoryMaterialRepository;
-import com.sampoom.factory.api.factory.repository.FactoryRepository;
+import com.sampoom.factory.api.factory.repository.FactoryProjectionRepository;
 import com.sampoom.factory.api.material.entity.OrderStatus;
 import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
 import com.sampoom.factory.api.material.entity.MaterialProjection;
@@ -33,18 +33,18 @@ public class MaterialOrderService {
 
     private final MaterialOrderRepository orderRepository;
     private final MaterialOrderItemRepository orderItemRepository;
-    private final FactoryRepository factoryRepository;
+    private final FactoryProjectionRepository factoryProjectionRepository;
     private final FactoryMaterialRepository factoryMaterialRepository;
     private final MaterialProjectionRepository materialProjectionRepository;
 
     @Transactional
     public MaterialOrderResponseDto createMaterialOrder(Long factoryId, MaterialOrderRequestDto requestDto) {
-        Factory factory = factoryRepository.findById(factoryId)
+        FactoryProjection factory = factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         MaterialOrder order = MaterialOrder.builder()
                 .code(generateOrderCode())
-                .factory(factory)
+                .factoryId(factoryId)
                 .status(OrderStatus.ORDERED)
                 .orderAt(LocalDateTime.now())
                 .build();
@@ -65,15 +65,29 @@ public class MaterialOrderService {
 
         orderItemRepository.saveAll(orderItems);
 
-        return MaterialOrderResponseDto.from(order, orderItems, materialId ->
+        MaterialOrderResponseDto response = MaterialOrderResponseDto.from(order, orderItems, materialId ->
             materialProjectionRepository.findByMaterialId(materialId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
         );
+
+        // factoryName 설정
+        response = MaterialOrderResponseDto.builder()
+                .id(response.getId())
+                .code(response.getCode())
+                .factoryId(response.getFactoryId())
+                .factoryName(factory.getBranchName())
+                .status(response.getStatus())
+                .orderAt(response.getOrderAt())
+                .receivedAt(response.getReceivedAt())
+                .items(response.getItems())
+                .build();
+
+        return response;
     }
 
     @Transactional(readOnly = true)
     public PageResponseDto<MaterialOrderResponseDto> getMaterialOrdersByFactory(Long factoryId, int page, int size) {
-        factoryRepository.findById(factoryId)
+        FactoryProjection factory = factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         PageRequest pageRequest = PageRequest.of(page, size);
@@ -82,10 +96,22 @@ public class MaterialOrderService {
         List<MaterialOrderResponseDto> content = ordersPage.getContent().stream()
                 .map(order -> {
                     List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(order.getId());
-                    return MaterialOrderResponseDto.from(order, items, materialId ->
+                    MaterialOrderResponseDto response = MaterialOrderResponseDto.from(order, items, materialId ->
                         materialProjectionRepository.findByMaterialId(materialId)
                             .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
                     );
+
+                    // factoryName 설정
+                    return MaterialOrderResponseDto.builder()
+                            .id(response.getId())
+                            .code(response.getCode())
+                            .factoryId(response.getFactoryId())
+                            .factoryName(factory.getBranchName())
+                            .status(response.getStatus())
+                            .orderAt(response.getOrderAt())
+                            .receivedAt(response.getReceivedAt())
+                            .items(response.getItems())
+                            .build();
                 })
                 .collect(Collectors.toList());
 
@@ -98,13 +124,13 @@ public class MaterialOrderService {
 
     @Transactional
     public MaterialOrderResponseDto receiveMaterialOrder(Long factoryId, Long orderId) {
-        factoryRepository.findById(factoryId)
+        FactoryProjection factory = factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         MaterialOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
 
-        if (!order.getFactory().getId().equals(factoryId)) {
+        if (!order.getFactoryId().equals(factoryId)) {
             throw new BadRequestException(ErrorStatus.FACTORY_MATERIAL_ORDER_MISMATCH);
         }
 
@@ -125,7 +151,7 @@ public class MaterialOrderService {
                     .orElseGet(() -> {
                         // 없으면 새로 생성
                         FactoryMaterial newMaterial = FactoryMaterial.builder()
-                                .factory(order.getFactory())
+                                .factoryId(factoryId)
                                 .materialId(materialId)
                                 .quantity(0L)
                                 .build();
@@ -135,51 +161,91 @@ public class MaterialOrderService {
             // 수량 증가
             factoryMaterial.increaseQuantity(quantity);
         }
-        // projection 기반 응답 생성
-        return MaterialOrderResponseDto.from(order, items, materialId ->
+
+        // factoryName이 포함된 응답 생성
+        MaterialOrderResponseDto response = MaterialOrderResponseDto.from(order, items, materialId ->
             materialProjectionRepository.findByMaterialId(materialId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
         );
+
+        return MaterialOrderResponseDto.builder()
+                .id(response.getId())
+                .code(response.getCode())
+                .factoryId(response.getFactoryId())
+                .factoryName(factory.getBranchName())
+                .status(response.getStatus())
+                .orderAt(response.getOrderAt())
+                .receivedAt(response.getReceivedAt())
+                .items(response.getItems())
+                .build();
     }
 
     @Transactional
     public MaterialOrderResponseDto cancelMaterialOrder(Long factoryId, Long orderId) {
+        FactoryProjection factory = factoryProjectionRepository.findById(factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
         MaterialOrder order = orderRepository
-                .findByIdAndFactory_Id(orderId, factoryId)
+                .findByIdAndFactoryId(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
         order.cancel();
+
         List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
-        return MaterialOrderResponseDto.from(order, items, materialId ->
+        MaterialOrderResponseDto response = MaterialOrderResponseDto.from(order, items, materialId ->
             materialProjectionRepository.findByMaterialId(materialId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
         );
+
+        return MaterialOrderResponseDto.builder()
+                .id(response.getId())
+                .code(response.getCode())
+                .factoryId(response.getFactoryId())
+                .factoryName(factory.getBranchName())
+                .status(response.getStatus())
+                .orderAt(response.getOrderAt())
+                .receivedAt(response.getReceivedAt())
+                .items(response.getItems())
+                .build();
     }
 
     @Transactional
     public void softDeleteMaterialOrder(Long factoryId, Long orderId) {
         MaterialOrder order = orderRepository
-                .findByIdAndFactory_Id(orderId, factoryId)
+                .findByIdAndFactoryId(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
-
-
 
         // JPA delete() 호출 → @SQLDelete가 UPDATE로 변환
         orderRepository.delete(order);
-
     }
 
     @Transactional(readOnly = true)
     public MaterialOrderResponseDto getMaterialOrderDetail(Long factoryId, Long orderId) {
-        MaterialOrder order = orderRepository.findByIdAndFactory_Id(orderId, factoryId )
+        FactoryProjection factory = factoryProjectionRepository.findById(factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        MaterialOrder order = orderRepository.findByIdAndFactoryId(orderId, factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
         List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
-        return MaterialOrderResponseDto.from(order, items, materialId ->
+
+        MaterialOrderResponseDto response = MaterialOrderResponseDto.from(order, items, materialId ->
             materialProjectionRepository.findByMaterialId(materialId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
         );
+
+        return MaterialOrderResponseDto.builder()
+                .id(response.getId())
+                .code(response.getCode())
+                .factoryId(response.getFactoryId())
+                .factoryName(factory.getBranchName())
+                .status(response.getStatus())
+                .orderAt(response.getOrderAt())
+                .receivedAt(response.getReceivedAt())
+                .items(response.getItems())
+                .build();
     }
 
     private String generateOrderCode() {
         return "ORD-" + System.currentTimeMillis();
     }
 }
+

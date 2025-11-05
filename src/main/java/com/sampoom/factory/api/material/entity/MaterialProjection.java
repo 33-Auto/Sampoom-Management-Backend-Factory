@@ -42,6 +42,9 @@ public class MaterialProjection {
     private Integer leadTime;
 
     @Column(nullable = false)
+    private Long standardCost;
+
+    @Column(nullable = false)
     private Long categoryId;
 
     // --- 동기화 안전 메타(둘 중 하나 이상 필수) ---
@@ -64,7 +67,7 @@ public class MaterialProjection {
 
     // 업데이트 메서드
     public MaterialProjection updateFromEvent(String code, String name, String materialUnit,
-                                          Integer baseQuantity, Integer leadTime,
+                                          Integer baseQuantity, Integer leadTime, Long standardCost,
                                            Boolean deleted,
                                            Long categoryId,
                                           UUID lastEventId,
@@ -75,6 +78,7 @@ public class MaterialProjection {
                 .materialUnit(materialUnit)
                 .baseQuantity(baseQuantity)
                 .leadTime(leadTime)
+                .standardCost(standardCost)
                 .deleted(deleted)
                 .categoryId(categoryId)
                 .lastEventId(lastEventId)
