@@ -80,14 +80,6 @@ public class FactoryMaterialController {
 //                materialOrderService.getMaterialOrdersByFactory(factoryId, page, size));
 //    }
 
-    @Operation(summary = "자재 주문 입고 처리", description = "자재 주문을 입고 처리합니다.")
-    @PutMapping("/{factoryId}/material/order/{orderId}/receive")
-    public ResponseEntity<ApiResponse<MaterialOrderResponseDto>> receiveMaterialOrder(
-            @PathVariable Long factoryId,
-            @PathVariable Long orderId) {
-        return ApiResponse.success(SuccessStatus.OK,
-                materialOrderService.receiveMaterialOrder(factoryId, orderId));
-    }
 
 //    @Operation(
 //            summary = "자재 주문 취소",

@@ -17,6 +17,8 @@ import com.sampoom.factory.api.factory.service.BranchFactoryDistanceService;
 import com.sampoom.factory.api.factory.dto.BranchFactoryDistanceEventDto;
 import com.sampoom.factory.api.factory.service.BranchProjectionService;
 import com.sampoom.factory.api.factory.dto.BranchEventDto;
+import com.sampoom.factory.api.purchase.dto.PurchaseEventDto;
+import com.sampoom.factory.api.purchase.service.PurchaseEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -37,6 +39,7 @@ public class ProjectionEventHandler {
     private final BomProjectionService bomProjectionService;
     private final BranchFactoryDistanceService branchFactoryDistanceService;
     private final BranchProjectionService branchProjectionService;
+    private final PurchaseEventService purchaseEventService;
 
     @KafkaListener(topics = "part-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handlePartEvent(String message) {
@@ -76,6 +79,11 @@ public class ProjectionEventHandler {
     @KafkaListener(topics = "factory-branch-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handleBranchEvent(String message) {
         handleEvent(message, "BranchEvent", BranchEventDto.class, branchProjectionService::handleBranchEvent);
+    }
+
+    @KafkaListener(topics = "purchase-events", groupId = "${spring.kafka.consumer.group-id}")
+    public void handlePurchaseEvent(String message) {
+        handleEvent(message, "PurchaseEvent", PurchaseEventDto.class, purchaseEventService::handlePurchaseEvent);
     }
 
 
