@@ -1,5 +1,6 @@
 package com.sampoom.factory.api.part.entity;
 
+import com.sampoom.factory.common.entitiy.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class PartOrder {
+public class PartOrder extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -67,6 +68,10 @@ public class PartOrder {
     @Column(name = "material_availability")
     private MaterialAvailability materialAvailability; // 자재가용성 (충분, 부족)
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "previous_status")
+    private PartOrderStatus previousStatus; // 이전 상태 (생산계획에서 보여줄 상태)
+
     @OneToMany(mappedBy = "partOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PartOrderItem> items = new ArrayList<>();
@@ -98,6 +103,8 @@ public class PartOrder {
     }
 
     public void startProgress() {
+        // 이전 상태를 저장한 후 IN_PROGRESS로 변경
+        this.previousStatus = this.status;
         this.status = PartOrderStatus.IN_PROGRESS;
     }
 
