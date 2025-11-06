@@ -10,6 +10,8 @@ public interface MaterialProjectionRepository extends JpaRepository<MaterialProj
 
     Optional<MaterialProjection> findByMaterialId(Long materialId);
 
+    Optional<MaterialProjection> findByCode(String code);
+
     // N+1 문제 해결을 위한 배치 조회 메서드
     List<MaterialProjection> findByMaterialIdIn(List<Long> materialIds);
 }

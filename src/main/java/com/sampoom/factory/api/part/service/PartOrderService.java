@@ -467,6 +467,56 @@ public class PartOrderService {
                 .build();
     }
 
+    // 주문 목록 조회 - 여러 상태와 우선순위 필터링 + 검색 지원
+    public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities, String query, int page, int size) {
+        factoryProjectionRepository.findById(factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PartOrder> partOrderPage;
+
+        // 검색어가 있는 경우와 없는 경우를 분리하여 처리
+        if (query != null && !query.trim().isEmpty()) {
+            String searchQuery = "%" + query.trim() + "%";
+
+            // 상태와 우선순위 조건에 따른 쿼리 선택 (검색어 포함)
+            if ((statuses != null && !statuses.isEmpty()) && (priorities != null && !priorities.isEmpty())) {
+                partOrderPage = partOrderRepository.findByFactoryIdAndStatusInAndPriorityInWithSearch(factoryId, statuses, priorities, searchQuery, pageable);
+            } else if (statuses != null && !statuses.isEmpty()) {
+                partOrderPage = partOrderRepository.findByFactoryIdAndStatusInWithSearch(factoryId, statuses, searchQuery, pageable);
+            } else if (priorities != null && !priorities.isEmpty()) {
+                partOrderPage = partOrderRepository.findByFactoryIdAndPriorityInWithSearch(factoryId, priorities, searchQuery, pageable);
+            } else {
+                partOrderPage = partOrderRepository.findByFactoryIdWithSearch(factoryId, searchQuery, pageable);
+            }
+        } else {
+            // 검색어가 없는 경우 기존 로직 사용
+            if ((statuses != null && !statuses.isEmpty()) && (priorities != null && !priorities.isEmpty())) {
+                partOrderPage = partOrderRepository.findByFactoryIdAndStatusInAndPriorityIn(factoryId, statuses, priorities, pageable);
+            } else if (statuses != null && !statuses.isEmpty()) {
+                partOrderPage = partOrderRepository.findByFactoryIdAndStatusIn(factoryId, statuses, pageable);
+            } else if (priorities != null && !priorities.isEmpty()) {
+                partOrderPage = partOrderRepository.findByFactoryIdAndPriorityIn(factoryId, priorities, pageable);
+            } else {
+                partOrderPage = partOrderRepository.findByFactoryId(factoryId, pageable);
+            }
+        }
+
+        List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
+                .map(partOrder -> {
+                    // 각 주문의 진행률 업데이트
+                    partOrder.calculateProgressByDate();
+                    return toResponseDto(partOrder);
+                })
+                .collect(Collectors.toList());
+
+        return PageResponseDto.<PartOrderResponseDto>builder()
+                .content(content)
+                .totalElements(partOrderPage.getTotalElements())
+                .totalPages(partOrderPage.getTotalPages())
+                .build();
+    }
+
     // DTO 변환 메서드
     private PartOrderResponseDto toResponseDto(PartOrder partOrder) {
         List<PartOrderResponseDto.PartOrderItemDto> itemDtos = partOrder.getItems().stream()
@@ -655,6 +705,7 @@ public class PartOrderService {
                 String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
                 String unit = materialProjection.map(mp -> mp.getMaterialUnit()).orElse("EA");
                 Long unitPrice = materialProjection.map(mp -> mp.getStandardCost()).orElse(1000L);
+                Integer leadTimeDays = materialProjection.map(mp -> mp.getLeadTime()).orElse(7);
 
                 List<PurchaseRequestDto.PurchaseItemDto> singleMaterialItem = List.of(
                     PurchaseRequestDto.PurchaseItemDto.builder()
@@ -663,13 +714,14 @@ public class PartOrderService {
                             .unit(unit)
                             .quantity(materialInfo.getShortageAmount())
                             .unitPrice(unitPrice)
+                            .leadTimeDays(leadTimeDays)
                             .build()
                 );
 
                 PurchaseRequestDto purchaseRequest = PurchaseRequestDto.builder()
                         .factoryId(factory.getBranchId())
                         .factoryName(factory.getBranchName())
-                        .requiredAt(partOrder.getRequiredDate().toLocalDate())
+                        .requiredAt(partOrder.getRequiredDate())
                         .requesterName("MRP 시스템")
                         .items(singleMaterialItem)
                         .build();

@@ -43,6 +43,63 @@ public interface PartOrderRepository extends JpaRepository<PartOrder,Long> {
     @EntityGraph(attributePaths = {"items"})
     Page<PartOrder> findByFactoryIdAndStatusInAndPriorityIn(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities, Pageable pageable);
 
+    // 검색 기능 지원 메서드들
+    @EntityGraph(attributePaths = {"items"})
+    @Query("SELECT DISTINCT po FROM PartOrder po " +
+           "LEFT JOIN po.items poi " +
+           "LEFT JOIN PartProjection pp ON poi.partId = pp.partId " +
+           "WHERE po.factoryId = :factoryId " +
+           "AND (LOWER(po.orderCode) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.name) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.code) LIKE LOWER(:searchQuery))")
+    Page<PartOrder> findByFactoryIdWithSearch(@Param("factoryId") Long factoryId,
+                                              @Param("searchQuery") String searchQuery,
+                                              Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    @Query("SELECT DISTINCT po FROM PartOrder po " +
+           "LEFT JOIN po.items poi " +
+           "LEFT JOIN PartProjection pp ON poi.partId = pp.partId " +
+           "WHERE po.factoryId = :factoryId " +
+           "AND po.status IN :statuses " +
+           "AND (LOWER(po.orderCode) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.name) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.code) LIKE LOWER(:searchQuery))")
+    Page<PartOrder> findByFactoryIdAndStatusInWithSearch(@Param("factoryId") Long factoryId,
+                                                         @Param("statuses") List<PartOrderStatus> statuses,
+                                                         @Param("searchQuery") String searchQuery,
+                                                         Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    @Query("SELECT DISTINCT po FROM PartOrder po " +
+           "LEFT JOIN po.items poi " +
+           "LEFT JOIN PartProjection pp ON poi.partId = pp.partId " +
+           "WHERE po.factoryId = :factoryId " +
+           "AND po.priority IN :priorities " +
+           "AND (LOWER(po.orderCode) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.name) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.code) LIKE LOWER(:searchQuery))")
+    Page<PartOrder> findByFactoryIdAndPriorityInWithSearch(@Param("factoryId") Long factoryId,
+                                                           @Param("priorities") List<PartOrderPriority> priorities,
+                                                           @Param("searchQuery") String searchQuery,
+                                                           Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    @Query("SELECT DISTINCT po FROM PartOrder po " +
+           "LEFT JOIN po.items poi " +
+           "LEFT JOIN PartProjection pp ON poi.partId = pp.partId " +
+           "WHERE po.factoryId = :factoryId " +
+           "AND po.status IN :statuses " +
+           "AND po.priority IN :priorities " +
+           "AND (LOWER(po.orderCode) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.name) LIKE LOWER(:searchQuery) " +
+           "OR LOWER(pp.code) LIKE LOWER(:searchQuery))")
+    Page<PartOrder> findByFactoryIdAndStatusInAndPriorityInWithSearch(@Param("factoryId") Long factoryId,
+                                                                      @Param("statuses") List<PartOrderStatus> statuses,
+                                                                      @Param("priorities") List<PartOrderPriority> priorities,
+                                                                      @Param("searchQuery") String searchQuery,
+                                                                      Pageable pageable);
+
     Optional<PartOrder> findTopByOrderCodeStartingWithOrderByOrderCodeDesc(String orderCodePrefix);
 
     // 스케줄러에서 사용할 메서드들

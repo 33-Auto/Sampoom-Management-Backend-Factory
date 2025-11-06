@@ -3,7 +3,7 @@ package com.sampoom.factory.api.purchase.dto;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -11,7 +11,7 @@ import java.util.List;
 public class PurchaseRequestDto {
     private Long factoryId;
     private String factoryName;
-    private LocalDate requiredAt;
+    private LocalDateTime requiredAt;
     private String requesterName;
     private List<PurchaseItemDto> items;
 
@@ -23,5 +23,6 @@ public class PurchaseRequestDto {
         private String unit;
         private Long quantity;
         private Long unitPrice;
+        private Integer leadTimeDays;
     }
 }

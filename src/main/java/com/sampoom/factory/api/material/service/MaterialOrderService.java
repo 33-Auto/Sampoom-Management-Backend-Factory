@@ -122,63 +122,6 @@ public class MaterialOrderService {
                 .build();
     }
 
-    @Transactional
-    public MaterialOrderResponseDto receiveMaterialOrder(Long factoryId, Long orderId) {
-        FactoryProjection factory = factoryProjectionRepository.findById(factoryId)
-                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
-
-        MaterialOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorStatus.ORDER_NOT_FOUND));
-
-        if (!order.getFactoryId().equals(factoryId)) {
-            throw new BadRequestException(ErrorStatus.FACTORY_MATERIAL_ORDER_MISMATCH);
-        }
-
-        order.receive();
-        orderRepository.save(order);
-
-        // 주문 아이템 조회
-        List<MaterialOrderItem> items = orderItemRepository.findByMaterialOrderId(orderId);
-
-        // 각 주문 아이템에 대해 공장 자재 수량 증가
-        for (MaterialOrderItem item : items) {
-            Long materialId = item.getMaterialId();
-            Long quantity = item.getQuantity();
-
-            // 해당 공장의 자재 찾기
-            FactoryMaterial factoryMaterial = factoryMaterialRepository.findByFactoryIdAndMaterialId(
-                            factoryId, materialId)
-                    .orElseGet(() -> {
-                        // 없으면 새로 생성
-                        FactoryMaterial newMaterial = FactoryMaterial.builder()
-                                .factoryId(factoryId)
-                                .materialId(materialId)
-                                .quantity(0L)
-                                .build();
-                        return factoryMaterialRepository.save(newMaterial);
-                    });
-
-            // 수량 증가
-            factoryMaterial.increaseQuantity(quantity);
-        }
-
-        // factoryName이 포함된 응답 생성
-        MaterialOrderResponseDto response = MaterialOrderResponseDto.from(order, items, materialId ->
-            materialProjectionRepository.findByMaterialId(materialId)
-                .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND))
-        );
-
-        return MaterialOrderResponseDto.builder()
-                .id(response.getId())
-                .code(response.getCode())
-                .factoryId(response.getFactoryId())
-                .factoryName(factory.getBranchName())
-                .status(response.getStatus())
-                .orderAt(response.getOrderAt())
-                .receivedAt(response.getReceivedAt())
-                .items(response.getItems())
-                .build();
-    }
 
     @Transactional
     public MaterialOrderResponseDto cancelMaterialOrder(Long factoryId, Long orderId) {
