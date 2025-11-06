@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.part.controller;
 
-import com.sampoom.factory.api.part.dto.PartOrderRequestDto;
 import com.sampoom.factory.api.part.dto.PartOrderResponseDto;
 import com.sampoom.factory.api.part.entity.PartOrderPriority;
 import com.sampoom.factory.api.part.entity.PartOrderStatus;
@@ -91,10 +90,28 @@ public class PartOrderController {
             @RequestParam(required = false) List<PartOrderStatus> statuses,
             @RequestParam(required = false) List<PartOrderPriority> priorities,
             @RequestParam(required = false) String query,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long groupId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PageResponseDto<PartOrderResponseDto> response = partOrderService.getPartOrders(factoryId, statuses, priorities, query, page, size);
+        PageResponseDto<PartOrderResponseDto> response = partOrderService.getPartOrders(factoryId, statuses, priorities, query, categoryId, groupId, page, size);
+        return ApiResponse.success(SuccessStatus.OK, response);
+    }
+
+    @Operation(summary = "생산계획 목록 조회", description = "생산계획 탭용 조회 - 계획 상태와 최근 IN_PROGRESS로 전환된 데이터를 포함하여 조회합니다.")
+    @GetMapping("/orders/production-plans")
+    public ResponseEntity<ApiResponse<PageResponseDto<PartOrderResponseDto>>> getProductionPlans(
+            @PathVariable Long factoryId,
+            @RequestParam(required = false) List<PartOrderPriority> priorities,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long groupId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "7") int includeRecentDays
+    ) {
+        PageResponseDto<PartOrderResponseDto> response = partOrderService.getProductionPlans(factoryId, priorities, query, categoryId, groupId, page, size, includeRecentDays);
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 

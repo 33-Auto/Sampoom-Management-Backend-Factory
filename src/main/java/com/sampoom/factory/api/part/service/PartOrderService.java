@@ -28,10 +28,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -238,7 +241,7 @@ public class PartOrderService {
             log.info("자재 부족 감지 - 주문 ID: {}, 자재 조달 리드타임: {}일",
                 partOrder.getId(), materialResult.getMaxMaterialLeadTime());
         } else {
-            log.info("자재 충분 - 주문 ID: {}, 생산 리드타임: {}일",
+            log.info("자재 충분 - 주문 ID: {}, 생산 리드타임: {}��",
                 partOrder.getId(), maxProductionLeadTime);
         }
 
@@ -517,6 +520,82 @@ public class PartOrderService {
                 .build();
     }
 
+    // 주문 목록 조회 - 카테고리, 그룹 필터링 추가 (컨트롤러 시그니처와 정확히 맞춤)
+    public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities,
+                                                              String query, Long categoryId, Long groupId, int page, int size) {
+        factoryProjectionRepository.findById(factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PartOrder> partOrderPage;
+
+        // 검색어가 있는 경우와 없는 경우를 분리하여 처리
+        if (query != null && !query.trim().isEmpty()) {
+            String searchQuery = "%" + query.trim() + "%";
+            partOrderPage = partOrderRepository.findByFactoryIdWithFiltersAndSearch(
+                factoryId, statuses, priorities, categoryId, groupId, searchQuery, pageable);
+        } else {
+            partOrderPage = partOrderRepository.findByFactoryIdWithFilters(
+                factoryId, statuses, priorities, categoryId, groupId, pageable);
+        }
+
+        List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
+                .map(partOrder -> {
+                    partOrder.calculateProgressByDate();
+                    return toResponseDto(partOrder);
+                })
+                .collect(Collectors.toList());
+
+        return PageResponseDto.<PartOrderResponseDto>builder()
+                .content(content)
+                .totalElements(partOrderPage.getTotalElements())
+                .totalPages(partOrderPage.getTotalPages())
+                .build();
+    }
+
+    /**
+     * 생산계획 목록 조회 (계획 상태 + 최근 IN_PROGRESS로 전환된 데이터 포함) - 컨트롤러 시그니처와 정확히 맞춤
+     */
+    public PageResponseDto<PartOrderResponseDto> getProductionPlans(Long factoryId, List<PartOrderPriority> priorities,
+                                                                  String query, Long categoryId, Long groupId,
+                                                                  int page, int size, int includeRecentDays) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
+
+        // 생산계획 상태: UNDER_REVIEW, PLAN_CONFIRMED, DELAYED
+        List<PartOrderStatus> planStatuses = Arrays.asList(
+            PartOrderStatus.UNDER_REVIEW,
+            PartOrderStatus.PLAN_CONFIRMED,
+            PartOrderStatus.DELAYED
+        );
+
+        // 최근 IN_PROGRESS로 전환된 데이터를 포함하기 위한 기준일 계산
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(includeRecentDays);
+
+        Page<PartOrder> partOrderPage;
+
+        if (StringUtils.hasText(query)) {
+            String searchQuery = "%" + query.trim() + "%";
+            partOrderPage = partOrderRepository.findProductionPlansWithFiltersAndSearch(
+                factoryId, planStatuses, priorities, categoryId, groupId, searchQuery, cutoffDate, pageable);
+        } else {
+            partOrderPage = partOrderRepository.findProductionPlansWithFilters(
+                factoryId, planStatuses, priorities, categoryId, groupId, cutoffDate, pageable);
+        }
+
+        List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
+                .map(partOrder -> {
+                    partOrder.calculateProgressByDate();
+                    return toProductionPlanResponseDto(partOrder);
+                })
+                .collect(Collectors.toList());
+
+        return PageResponseDto.<PartOrderResponseDto>builder()
+                .content(content)
+                .totalElements(partOrderPage.getTotalElements())
+                .totalPages(partOrderPage.getTotalPages())
+                .build();
+    }
+
     // DTO 변환 메서드
     private PartOrderResponseDto toResponseDto(PartOrder partOrder) {
         List<PartOrderResponseDto.PartOrderItemDto> itemDtos = partOrder.getItems().stream()
@@ -544,6 +623,52 @@ public class PartOrderService {
                 .warehouseName(partOrder.getWarehouseName())
                 .orderDate(partOrder.getOrderDate())
                 .status(partOrder.getStatus().name())
+                .factoryId(factory.getBranchId())
+                .factoryName(factory.getBranchName())
+                .requiredDate(partOrder.getRequiredDate())
+                .scheduledDate(partOrder.getScheduledDate())
+                .progressRate(partOrder.getProgressRate())
+                .rejectionReason(partOrder.getRejectionReason())
+                .dDay(partOrder.getDDay())
+                .priority(partOrder.getPriority() != null ? partOrder.getPriority().name() : null)
+                .materialAvailability(partOrder.getMaterialAvailability() != null ? partOrder.getMaterialAvailability().name() : null)
+                .items(itemDtos)
+                .build();
+    }
+
+    // 생산계획용 DTO 변환 메서드 (IN_PROGRESS인 경우 이전 상태로 표시)
+    private PartOrderResponseDto toProductionPlanResponseDto(PartOrder partOrder) {
+        List<PartOrderResponseDto.PartOrderItemDto> itemDtos = partOrder.getItems().stream()
+                .map(item -> {
+                    PartProjection part = partProjectionRepository.findByPartId(item.getPartId())
+                        .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_NOT_FOUND));
+                    return PartOrderResponseDto.PartOrderItemDto.builder()
+                        .partId(part.getPartId())
+                        .partName(part.getName())
+                        .partCode(part.getCode())
+                        .partGroup(part.getGroupId() != null ? String.valueOf(part.getGroupId()) : null)
+                        .partCategory(part.getCategoryId() != null ? String.valueOf(part.getCategoryId()) : null)
+                        .quantity(item.getQuantity())
+                        .build();
+                })
+                .toList();
+
+        // FactoryProjection에서 공장 정보 조회
+        FactoryProjection factory = factoryProjectionRepository.findById(partOrder.getFactoryId())
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        // 생산계획에서는 IN_PROGRESS인 경우 이전 상태로 표시
+        String displayStatus = partOrder.getStatus().name();
+        if (partOrder.getStatus() == PartOrderStatus.IN_PROGRESS && partOrder.getPreviousStatus() != null) {
+            displayStatus = partOrder.getPreviousStatus().name();
+        }
+
+        return PartOrderResponseDto.builder()
+                .orderId(partOrder.getId())
+                .orderCode(partOrder.getOrderCode())
+                .warehouseName(partOrder.getWarehouseName())
+                .orderDate(partOrder.getOrderDate())
+                .status(displayStatus)
                 .factoryId(factory.getBranchId())
                 .factoryName(factory.getBranchName())
                 .requiredDate(partOrder.getRequiredDate())
@@ -614,7 +739,7 @@ public class PartOrderService {
             } else {
                 // 거리 정보가 없는 경우 기본 위치 근접성 체크 (하위 호환성)
                 if (warehouseName != null && factory.getAddress() != null && factory.getAddress().contains(warehouseName)) {
-                    score += 15; // 위치 근접성 보너스 (거리 정보보다 낮은 점수)
+                    score += 15; // 위치 근접성 보너스 (거리 정보��다 낮은 점수)
                 }
                 log.info("공장 {} - 거리 정보 없음, 주소 기반 점수 적용", factory.getBranchName());
             }
