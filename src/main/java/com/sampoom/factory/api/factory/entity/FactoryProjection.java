@@ -50,15 +50,17 @@ public class FactoryProjection {
     @Column(name = "last_event_id", columnDefinition = "uuid")
     private UUID lastEventId;
 
-    @Column(nullable = false)
-    private OffsetDateTime updatedAt;
-
+    // 시간은 타 서비스와 교환되므로 OffsetDateTime 권장
     @Column
-    private OffsetDateTime sourceUpdatedAt;
+    private OffsetDateTime sourceUpdatedAt;  // 원본 updatedAt
+
+    @Column(nullable = false)
+    private OffsetDateTime updatedAt;        // 프로젝션 갱신 시각
+
 
     public void updateFromEvent(String branchCode, String branchName, String address,
                                Double latitude, Double longitude, FactoryStatus status, Boolean deleted,
-                               Long version, UUID eventId) {
+                               Long version, UUID eventId, OffsetDateTime sourceUpdatedAt) {
         this.branchCode = branchCode;
         this.branchName = branchName;
         this.address = address;
@@ -68,5 +70,7 @@ public class FactoryProjection {
         this.deleted = deleted;
         this.version = version;
         this.lastEventId = eventId;
+        this.sourceUpdatedAt = sourceUpdatedAt;
+        this.updatedAt = OffsetDateTime.now();
     }
 }

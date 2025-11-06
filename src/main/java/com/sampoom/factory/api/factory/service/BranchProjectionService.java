@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
@@ -71,6 +72,8 @@ public class BranchProjectionService {
                 .deleted(eventDto.getPayload().getDeleted())
                 .version(nvl(eventDto.getVersion(), 0L))
                 .lastEventId(eventDto.getEventId())
+                .sourceUpdatedAt(eventDto.getOccurredAt())
+                .updatedAt(OffsetDateTime.now())
                 .build();
 
         factoryProjectionRepository.save(projection);
@@ -124,7 +127,8 @@ public class BranchProjectionService {
                 FactoryStatus.valueOf(eventDto.getPayload().getStatus()),
                 eventDto.getPayload().getDeleted(),
                 nvl(eventDto.getVersion(), 0L),
-                eventDto.getEventId()
+                eventDto.getEventId(),
+                eventDto.getOccurredAt()
         );
 
         factoryProjectionRepository.save(projection);
@@ -146,7 +150,8 @@ public class BranchProjectionService {
                 projection.getStatus(),
                 true, // deleted = true
                 nvl(eventDto.getVersion(), 0L),
-                eventDto.getEventId()
+                eventDto.getEventId(),
+                eventDto.getOccurredAt()
         );
 
         factoryProjectionRepository.save(projection);
