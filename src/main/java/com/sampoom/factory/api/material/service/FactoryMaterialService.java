@@ -1,11 +1,11 @@
 package com.sampoom.factory.api.material.service;
 
+import com.sampoom.factory.api.factory.entity.FactoryProjection;
 import com.sampoom.factory.api.material.dto.MaterialResponseDto;
 import com.sampoom.factory.common.response.PageResponseDto;
-import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import com.sampoom.factory.api.material.repository.FactoryMaterialRepository;
-import com.sampoom.factory.api.factory.repository.FactoryRepository;
+import com.sampoom.factory.api.factory.repository.FactoryProjectionRepository;
 
 import com.sampoom.factory.api.material.repository.MaterialCategoryProjectionRepository;
 import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,14 +30,14 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class FactoryMaterialService {
 
-    private final FactoryRepository factoryRepository;
+    private final FactoryProjectionRepository factoryProjectionRepository;
     private final FactoryMaterialRepository factoryMaterialRepository;
     private final MaterialCategoryProjectionRepository materialCategoryProjectionRepository;
     private final MaterialProjectionRepository materialProjectionRepository;
 
     public PageResponseDto<MaterialResponseDto> getMaterialsByFactoryAndCategory(
             Long factoryId, Long categoryId, int page, int size) {
-        Factory factory = factoryRepository.findById(factoryId)
+        FactoryProjection factoryProjection = factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         materialCategoryProjectionRepository.findByCategoryId(categoryId)
@@ -105,7 +104,7 @@ public class FactoryMaterialService {
             int size
     ) {
 
-        factoryRepository.findById(factoryId)
+        factoryProjectionRepository.findById(factoryId)
                             .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         if (categoryId != null) {

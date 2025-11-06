@@ -1,9 +1,6 @@
 package com.sampoom.factory.api.factory.service;
 
 import com.sampoom.factory.api.factory.dto.FactoryRequestDto;
-import com.sampoom.factory.api.factory.dto.FactoryResponseDto;
-import com.sampoom.factory.api.factory.entity.Factory;
-import com.sampoom.factory.api.factory.repository.FactoryRepository;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import com.sampoom.factory.api.material.entity.Material;
 import com.sampoom.factory.api.material.repository.FactoryMaterialRepository;
@@ -15,14 +12,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 

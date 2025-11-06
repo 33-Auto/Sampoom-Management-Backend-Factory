@@ -1,7 +1,6 @@
 package com.sampoom.factory.api.material.repository;
 
 
-import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,14 +12,16 @@ import java.util.Optional;
 
 public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial, Long> {
 
+    Optional<FactoryMaterial> findByFactoryIdAndMaterialId(Long factoryId, Long materialId);
 
+    Optional<FactoryMaterial> findFirstByFactoryIdAndMaterialId(Long factoryId, Long materialId);
 
-    Page<FactoryMaterial> findByFactory_IdAndMaterialIdIn(Long factoryId, Iterable<Long> materialIds, Pageable pageable);
+    Page<FactoryMaterial> findByFactoryIdAndMaterialIdIn(Long factoryId, Iterable<Long> materialIds, Pageable pageable);
 
     @Query("""
         select fm
         from FactoryMaterial fm
-        where fm.factory.id = :factoryId
+        where fm.factoryId = :factoryId
           and (:categoryId is null or fm.materialId in (
             select mp.materialId from MaterialProjection mp where mp.categoryId = :categoryId
           ))
@@ -33,7 +34,7 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
     @Query("""
         select fm
         from FactoryMaterial fm
-        where fm.factory.id = :factoryId
+        where fm.factoryId = :factoryId
           and (:categoryId is null or fm.materialId in (
             select mp.materialId from MaterialProjection mp where mp.categoryId = :categoryId
           ))
@@ -48,7 +49,5 @@ public interface FactoryMaterialRepository extends JpaRepository<FactoryMaterial
             Pageable pageable
     );
 
-    void deleteAllByFactory(Factory factory);
-
-    Optional<FactoryMaterial> findByFactoryIdAndMaterialId(Long factoryId, Long materialId);
+    void deleteAllByFactoryId(Long factoryId);
 }

@@ -31,5 +31,6 @@ public class PartEventDto {
         private Boolean deleted;
         private Long groupId;
         private Long categoryId;
+        private Long standardCost;
     }
 }

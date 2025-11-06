@@ -62,6 +62,7 @@ public class PartProjectionService {
                 .deleted(payload.getDeleted())
                 .groupId(payload.getGroupId())
                 .categoryId(payload.getCategoryId())
+                .standardCost(payload.getStandardCost())
                 .lastEventId(eventDto.getEventId())
                 .version(eventDto.getVersion())
                 .sourceUpdatedAt(eventDto.getOccurredAt())
@@ -93,6 +94,7 @@ public class PartProjectionService {
                 payload.getDeleted(),
                 payload.getGroupId(),
                 payload.getCategoryId(),
+                payload.getStandardCost(),
                 eventDto.getEventId(),
                 eventDto.getVersion(),
                 eventDto.getOccurredAt()
@@ -124,6 +126,7 @@ public class PartProjectionService {
                 true, // deleted = true
                 currentPart.getGroupId(),
                 currentPart.getCategoryId(),
+                currentPart.getStandardCost(),
                 eventDto.getEventId(),
                 eventDto.getVersion(),
                 eventDto.getOccurredAt()
@@ -135,4 +138,3 @@ public class PartProjectionService {
 
     private long nvl(Long v, long def) { return v == null ? def : v; }
 }
-

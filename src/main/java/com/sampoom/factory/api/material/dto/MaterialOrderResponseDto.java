@@ -32,8 +32,8 @@ public class MaterialOrderResponseDto {
         return MaterialOrderResponseDto.builder()
                 .id(order.getId())
                 .code(order.getCode())
-                .factoryId(order.getFactory().getId())
-                .factoryName(order.getFactory().getName())
+                .factoryId(order.getFactoryId())
+                .factoryName("") // factoryName은 별도로 설정 필요
                 .status(order.getStatus())
                 .orderAt(order.getOrderAt())
                 .receivedAt(order.getReceivedAt())

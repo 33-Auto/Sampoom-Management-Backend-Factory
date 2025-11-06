@@ -4,8 +4,10 @@ import com.sampoom.factory.api.bom.entity.BomProjection;
 import com.sampoom.factory.api.bom.entity.BomMaterialProjection;
 import com.sampoom.factory.api.bom.repository.BomProjectionRepository;
 import com.sampoom.factory.api.bom.repository.BomMaterialProjectionRepository;
-import com.sampoom.factory.api.factory.entity.Factory;
-import com.sampoom.factory.api.factory.repository.FactoryRepository;
+import com.sampoom.factory.api.factory.entity.FactoryProjection;
+import com.sampoom.factory.api.factory.repository.FactoryProjectionRepository;
+import com.sampoom.factory.api.factory.entity.BranchFactoryDistance;
+import com.sampoom.factory.api.factory.repository.BranchFactoryDistanceRepository;
 import com.sampoom.factory.api.material.entity.FactoryMaterial;
 import com.sampoom.factory.api.material.repository.FactoryMaterialRepository;
 import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
@@ -44,10 +46,12 @@ public class PartOrderService {
     private final FactoryMaterialRepository factoryMaterialRepository;
     private final PartProjectionRepository partProjectionRepository;
     private final PartOrderRepository partOrderRepository;
-    private final FactoryRepository factoryRepository;
+    private final FactoryProjectionRepository factoryProjectionRepository;
     private final MaterialProjectionRepository materialProjectionRepository;
     private final PurchaseRequestService purchaseRequestService; // 구매요청 서비스 추가
     private final PartOrderCodeGenerator partOrderCodeGenerator; // 주문 코드 생성기 추가
+    private final BranchFactoryDistanceRepository branchFactoryDistanceRepository; // 거리 정보 Repository 추가
+    private final PartOrderEventService partOrderEventService; // 이벤트 서비스 추가
 
     // 새로운 주문 흐름: 검토중 -> MRP 실행 -> 구매요청/계획확정 -> 진행중 -> 완료
     @Transactional
@@ -56,19 +60,20 @@ public class PartOrderService {
         Map<Long, Long> requiredMaterials = calculateRequiredMaterials(request);
 
         // 적절한 공장 선택 (자재 재고나 위치에 따라)
-        Factory factory = findOptimalFactory(requiredMaterials, request.getWarehouseName());
+        FactoryProjection factory = findOptimalFactory(requiredMaterials, request.getWarehouseId(), request.getWarehouseName());
 
         // 주문 코드 자동 생성
         String orderCode = partOrderCodeGenerator.generateOrderCode();
 
         // 주문 생성 (초기 상태: 검토중)
         PartOrder partOrder = PartOrder.builder()
-                .factory(factory)
+                .factoryId(factory.getBranchId())
+                .warehouseId(request.getWarehouseId())
                 .status(PartOrderStatus.UNDER_REVIEW)
                 .warehouseName(request.getWarehouseName())
                 .orderDate(LocalDateTime.now())
                 .requiredDate(request.getRequiredDate()) // 고객 요청 필요일 설정
-                .orderCode(orderCode) // 자동 ���성된 주문 코드 설정
+                .orderCode(orderCode) // 자동 생성된 주문 코드 설정
                 .build();
 
         List<PartOrderItem> items = new ArrayList<>();
@@ -93,7 +98,10 @@ public class PartOrderService {
 
         partOrderRepository.save(partOrder);
 
-        // 주문 생성 시��는 MRP를 자동으로 실행하지 않음 (별도 API로 분리)
+        // 부품 주문 생성 이벤트 발행
+        partOrderEventService.recordPartOrderCreated(partOrder);
+
+        // 주문 생성 시에는 MRP를 자동으로 실행하지 않음 (별도 API로 분리)
         log.info("부품 주문 생성 완료 - 주문 ID: {}, 상태: {}, 우선순위: {}, 자재가용성: {}",
             partOrder.getId(), partOrder.getStatus(), partOrder.getPriority(), partOrder.getMaterialAvailability());
 
@@ -124,7 +132,7 @@ public class PartOrderService {
             List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
             for (BomMaterialProjection bomMaterial : materials) {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
-                    .findByFactoryIdAndMaterialId(partOrder.getFactory().getId(), bomMaterial.getMaterialId())
+                    .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElse(null);
                 long required = (long) bomMaterial.getQuantity() * item.getQuantity();
                 if (factoryMaterial == null || factoryMaterial.getQuantity() < required) {
@@ -235,6 +243,9 @@ public class PartOrderService {
         }
 
         partOrderRepository.save(partOrder);
+
+        // MRP 실행으로 상태가 변경된 경우 이벤트 발행
+        partOrderEventService.recordPartOrderStatusChanged(partOrder);
     }
 
     // 부품별 리드타임을 고려한 생산 소요 시간 계산
@@ -265,7 +276,7 @@ public class PartOrderService {
             List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
             for (BomMaterialProjection bomMaterial : materials) {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
-                        .findByFactoryIdAndMaterialId(partOrder.getFactory().getId(), bomMaterial.getMaterialId())
+                        .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                         .orElse(null);
 
                 long required = (long) bomMaterial.getQuantity() * item.getQuantity();
@@ -274,9 +285,8 @@ public class PartOrderService {
                     materialShortage = true;
                     int materialLeadTime = materialProjectionRepository.findByMaterialId(bomMaterial.getMaterialId())
                         .map(mp -> mp.getLeadTime())
-                        .orElse(7); // projection이 없으면 기본값 7일
+                        .orElse(7);
                     maxMaterialLeadTime = Math.max(maxMaterialLeadTime, materialLeadTime);
-                    // 자재 이름도 함께 로그로 출력
                     String materialName = materialProjectionRepository.findByMaterialId(bomMaterial.getMaterialId())
                         .map(mp -> mp.getName())
                         .orElse("UNKNOWN");
@@ -331,6 +341,9 @@ public class PartOrderService {
         partOrder.complete();
         partOrderRepository.save(partOrder);
 
+        // 주문 완료 이벤트 발행
+        partOrderEventService.recordPartOrderCompleted(partOrder);
+
         return toResponseDto(partOrder);
     }
 
@@ -352,7 +365,7 @@ public class PartOrderService {
         PartOrder partOrder = partOrderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
 
-        if (!partOrder.getFactory().getId().equals(factoryId)) {
+        if (!partOrder.getFactoryId().equals(factoryId)) {
             throw new BadRequestException(ErrorStatus.INVALID_FACTORY_FOR_PART_ORDER);
         }
 
@@ -364,7 +377,7 @@ public class PartOrderService {
 
     // 주문 목록 조회
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, PartOrderStatus status, int page, int size) {
-        factoryRepository.findById(factoryId)
+        factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size);
@@ -393,7 +406,7 @@ public class PartOrderService {
 
     // 주문 목록 조회 - 여러 상태 필터링 지원
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, int page, int size) {
-        factoryRepository.findById(factoryId)
+        factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size);
@@ -422,7 +435,7 @@ public class PartOrderService {
 
     // 주문 목록 조회 - 여러 상태와 우선순위 필터링 지원
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities, int page, int size) {
-        factoryRepository.findById(factoryId)
+        factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size);
@@ -471,14 +484,18 @@ public class PartOrderService {
                 })
                 .toList();
 
+        // FactoryProjection에서 공장 정보 조회
+        FactoryProjection factory = factoryProjectionRepository.findById(partOrder.getFactoryId())
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
         return PartOrderResponseDto.builder()
                 .orderId(partOrder.getId())
-                .orderCode(partOrder.getOrderCode()) // 주문 코드 추가
+                .orderCode(partOrder.getOrderCode())
                 .warehouseName(partOrder.getWarehouseName())
                 .orderDate(partOrder.getOrderDate())
                 .status(partOrder.getStatus().name())
-                .factoryId(partOrder.getFactory().getId())
-                .factoryName(partOrder.getFactory().getName())
+                .factoryId(factory.getBranchId())
+                .factoryName(factory.getBranchName())
                 .requiredDate(partOrder.getRequiredDate())
                 .scheduledDate(partOrder.getScheduledDate())
                 .progressRate(partOrder.getProgressRate())
@@ -490,20 +507,19 @@ public class PartOrderService {
                 .build();
     }
 
-    private Factory findOptimalFactory(Map<Long, Long> requiredMaterials, String warehouseName) {
-        List<Factory> factories = factoryRepository.findAll();
+    private FactoryProjection findOptimalFactory(Map<Long, Long> requiredMaterials, Long warehouseId, String warehouseName) {
+        List<FactoryProjection> factories = factoryProjectionRepository.findAll();
 
-        Factory optimalFactory = null;
-        int bestScore = -1;
+        FactoryProjection optimalFactory = null;
+        double bestScore = -1;
 
-        for (Factory factory : factories) {
-            int score = 0;
-            boolean canProduce = true;
+        for (FactoryProjection factory : factories) {
+            double score = 0;
 
             // 자재 재고량 확인
             for (Map.Entry<Long, Long> entry : requiredMaterials.entrySet()) {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
-                        .findByFactoryIdAndMaterialId(factory.getId(), entry.getKey())
+                        .findFirstByFactoryIdAndMaterialId(factory.getBranchId(), entry.getKey())
                         .orElse(null);
 
                 if (factoryMaterial != null && factoryMaterial.getQuantity() >= entry.getValue()) {
@@ -513,10 +529,47 @@ public class PartOrderService {
                 }
             }
 
-            // 창고명과 공장 주소의 유사성 (간단한 예시)
-            if (factory.getAddress() != null && factory.getAddress().contains(warehouseName)) {
-                score += 20; // 위치 근접성 보너스
+            // 창고-공장 간 거리 점수 (거리가 가까울수록 높은 점수)
+            // 우선 창고 ID로 거리 조회 시도
+            BranchFactoryDistance distance = null;
+            if (warehouseId != null) {
+                distance = branchFactoryDistanceRepository
+                        .findByBranchIdAndFactoryId(warehouseId, factory.getBranchId())
+                        .orElse(null);
             }
+
+            // 창고 ID로 찾지 못한 경우 창고명으로 조회 (하위 호환성)
+            if (distance == null && warehouseName != null) {
+                distance = branchFactoryDistanceRepository
+                        .findByBranchNameAndFactoryId(warehouseName, factory.getBranchId())
+                        .orElse(null);
+            }
+
+            if (distance != null) {
+                double distanceKm = distance.getDistanceKm();
+                if (distanceKm <= 100) {
+                    score += 30;
+                } else if (distanceKm <= 200) {
+                    score += 20;
+                } else if (distanceKm <= 300) {
+                    score += 10;
+                } else {
+                    score += 5; // 멀어도 최소 점수
+                }
+
+                log.info("공장 {} - 거리: {}km, 거리 점수: {}, 조회방법: {}",
+                    factory.getBranchName(), distanceKm,
+                    distanceKm <= 100 ? 30 : distanceKm <= 200 ? 20 : distanceKm <= 300 ? 10 : 5,
+                    warehouseId != null ? "창고ID" : "창고명");
+            } else {
+                // 거리 정보가 없는 경우 기본 위치 근접성 체크 (하위 호환성)
+                if (warehouseName != null && factory.getAddress() != null && factory.getAddress().contains(warehouseName)) {
+                    score += 15; // 위치 근접성 보너스 (거리 정보보다 낮은 점수)
+                }
+                log.info("공장 {} - 거리 정보 없음, 주소 기반 점수 적용", factory.getBranchName());
+            }
+
+            log.info("공장 평가 - 이름: {}, 총 점수: {}", factory.getBranchName(), score);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -527,9 +580,198 @@ public class PartOrderService {
         if (optimalFactory == null) {
             // 적절한 공장이 없으면 첫 번째 공장 선택
             optimalFactory = factories.get(0);
+            log.warn("최적 공장을 찾지 못해 첫 번째 공장 선택: {}", optimalFactory.getBranchName());
+        } else {
+            log.info("최적 공장 선택 완료 - 공장명: {}, 최종 점수: {}", optimalFactory.getBranchName(), bestScore);
         }
 
         return optimalFactory;
+    }
+
+    // 자재 차감 projection 기반으로 변경
+    private void deductMaterials(PartOrder partOrder) {
+        for (PartOrderItem item : partOrder.getItems()) {
+            BomProjection bomProjection = bomProjectionRepository.findByPartId(item.getPartId())
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.BOM_NOT_FOUND));
+            List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
+            for (BomMaterialProjection bomMaterial : materials) {
+                FactoryMaterial factoryMaterial = factoryMaterialRepository
+                    .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
+                    .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND));
+                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                factoryMaterial.decreaseQuantity(required);
+            }
+        }
+    }
+
+    // 자재 구매요청 처리 (자재 부족 시 호출) - 종류별 단건 요청으로 변경
+    private void requestMaterialPurchase(PartOrder partOrder) {
+        log.info("자재 구매요청 처리 시작 - 주문 ID: {}", partOrder.getId());
+
+        // 자재별로 부족량을 집계
+        Map<Long, MaterialPurchaseInfo> materialRequirements = new HashMap<>();
+
+        for (PartOrderItem item : partOrder.getItems()) {
+            BomProjection bomProjection = bomProjectionRepository.findByPartId(item.getPartId())
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.BOM_NOT_FOUND));
+            List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
+
+            for (BomMaterialProjection bomMaterial : materials) {
+                FactoryMaterial factoryMaterial = factoryMaterialRepository
+                    .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
+                    .orElse(null);
+
+                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long currentStock = factoryMaterial != null ? factoryMaterial.getQuantity() : 0;
+
+                if (currentStock < required) {
+                    long shortageAmount = required - currentStock;
+                    
+                    // 이미 집계된 자재가 있으면 부족량을 추가
+                    materialRequirements.merge(bomMaterial.getMaterialId(), 
+                        new MaterialPurchaseInfo(bomMaterial.getMaterialId(), shortageAmount),
+                        (existing, newInfo) -> new MaterialPurchaseInfo(
+                            existing.getMaterialId(), 
+                            existing.getShortageAmount() + newInfo.getShortageAmount())
+                    );
+                }
+            }
+        }
+
+        // 공장 정보 조회
+        FactoryProjection factory = factoryProjectionRepository.findById(partOrder.getFactoryId())
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        // 자재별로 개별 구매요청 생성 및 전송
+        int successCount = 0;
+        int failCount = 0;
+        List<String> failedMaterials = new ArrayList<>();
+        
+        for (MaterialPurchaseInfo materialInfo : materialRequirements.values()) {
+            try {
+                var materialProjection = materialProjectionRepository.findByMaterialId(materialInfo.getMaterialId());
+
+                String materialCode = materialProjection.map(mp -> mp.getCode()).orElse("MTL-" + materialInfo.getMaterialId());
+                String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
+                String unit = materialProjection.map(mp -> mp.getMaterialUnit()).orElse("EA");
+                Long unitPrice = materialProjection.map(mp -> mp.getStandardCost()).orElse(1000L);
+
+                List<PurchaseRequestDto.PurchaseItemDto> singleMaterialItem = List.of(
+                    PurchaseRequestDto.PurchaseItemDto.builder()
+                            .materialCode(materialCode)
+                            .materialName(materialName)
+                            .unit(unit)
+                            .quantity(materialInfo.getShortageAmount())
+                            .unitPrice(unitPrice)
+                            .build()
+                );
+
+                PurchaseRequestDto purchaseRequest = PurchaseRequestDto.builder()
+                        .factoryId(factory.getBranchId())
+                        .factoryName(factory.getBranchName())
+                        .requiredAt(partOrder.getRequiredDate().toLocalDate())
+                        .requesterName("MRP 시스템")
+                        .items(singleMaterialItem)
+                        .build();
+
+                purchaseRequestService.sendPurchaseRequest(purchaseRequest);
+                
+                log.info("자재 개별 구매요청 성공 - 주문 ID: {}, 자재코드: {}, 자재명: {}, 부족수량: {}", 
+                    partOrder.getId(), materialCode, materialName, materialInfo.getShortageAmount());
+                
+                successCount++;
+                
+            } catch (Exception e) {
+                String materialName = materialProjectionRepository.findByMaterialId(materialInfo.getMaterialId())
+                    .map(mp -> mp.getName())
+                    .orElse("UNKNOWN");
+                
+                failedMaterials.add(materialName);
+                
+                log.error("자재 개별 구매요청 실패 - 주문 ID: {}, 자재 ID: {}, 자재명: {}, 오류: {}",
+                    partOrder.getId(), materialInfo.getMaterialId(), materialName, e.getMessage());
+                failCount++;
+            }
+        }
+
+        if (materialRequirements.isEmpty()) {
+            log.info("구매요청할 자재가 없습니다 - 주문 ID: {}", partOrder.getId());
+        } else {
+            log.info("자재 구매요청 처리 완료 - 주문 ID: {}, 성공: {}, 실패: {}, 총 자재 종류: {}", 
+                partOrder.getId(), successCount, failCount, materialRequirements.size());
+        }
+
+        // 하나라도 실패한 경우 상세한 예외 발생
+        if (failCount > 0) {
+            String errorMessage = String.format(
+                "자재 구매요청이 실패했습니다. 성공: %d, 실패: %d. 실패한 자재: %s",
+                successCount, failCount, String.join(", ", failedMaterials)
+            );
+            throw new RuntimeException(errorMessage);
+        }
+    }
+
+    // 자재 구매 정보를 담는 내부 클래스
+    private static class MaterialPurchaseInfo {
+        private final Long materialId;
+        private final Long shortageAmount;
+
+        public MaterialPurchaseInfo(Long materialId, Long shortageAmount) {
+            this.materialId = materialId;
+            this.shortageAmount = shortageAmount;
+        }
+
+        public Long getMaterialId() {
+            return materialId;
+        }
+
+        public Long getShortageAmount() {
+            return shortageAmount;
+        }
+    }
+
+    // 부품 주문 생성 (아이템별 단건 주문 생성)
+    @Transactional
+    public List<PartOrderResponseDto> createPartOrdersSeparately(PartOrderRequestDto request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BadRequestException(ErrorStatus.BAD_REQUEST);
+        }
+
+        log.info("부품 주문 단건 생성 시작 - 아이템 수: {}, 창고ID: {}, 창고명: {}",
+            request.getItems().size(), request.getWarehouseId(), request.getWarehouseName());
+
+        List<PartOrderResponseDto> results = new ArrayList<>();
+
+        // 각 아이템별로 개별 주문 생성
+        for (PartOrderRequestDto.PartOrderItemRequestDto item : request.getItems()) {
+            try {
+                // 단일 아이템으로 요청 DTO 생성
+                PartOrderRequestDto singleItemRequest = PartOrderRequestDto.builder()
+                        .warehouseId(request.getWarehouseId()) // 창고 ID 추가
+                        .warehouseName(request.getWarehouseName())
+                        .requiredDate(request.getRequiredDate())
+                        .items(List.of(item)) // 단일 아이템만 포함
+                        .build();
+
+                // 개별 주문 생성
+                PartOrderResponseDto orderResult = createPartOrder(singleItemRequest);
+                results.add(orderResult);
+
+                log.info("개별 부품 주문 생성 완료 - 주문 ID: {}, 부품 ID: {}, 수량: {}",
+                    orderResult.getOrderId(), item.getPartId(), item.getQuantity());
+
+            } catch (Exception e) {
+                log.error("개별 부품 주문 생성 실패 - 부품 ID: {}, 수량: {}, 오류: {}",
+                    item.getPartId(), item.getQuantity(), e.getMessage(), e);
+                // 개별 주문 실패 시에도 다른 주문은 계속 처리
+                // 하지만 실패한 아이템에 대한 정보는 로그로 남김
+            }
+        }
+
+        log.info("부품 주문 단건 생성 완료 - 총 아이템: {}, 성공한 주문: {}",
+            request.getItems().size(), results.size());
+
+        return results;
     }
 
     // 생산지시 API (계획확정 상태에서 진행중으로 변경) - 동시성 제어 추가
@@ -564,6 +806,9 @@ public class PartOrderService {
 
         partOrderRepository.save(partOrder);
 
+        // 생산지시로 상태가 변경된 경우 이벤트 발행
+        partOrderEventService.recordPartOrderStatusChanged(partOrder);
+
         return toResponseDto(partOrder);
     }
 
@@ -588,7 +833,7 @@ public class PartOrderService {
 
         if (partOrder.getMaterialAvailability() == MaterialAvailability.INSUFFICIENT) {
             // 자재 부족 시: 자재 구매요청 + 생산지시
-            log.info("자재 부족으로 구매요청 및 생산지시 동시 진행 - 주문 ID: {}", partOrder.getId());
+            log.info("자재 부족으로 구매요�� 및 생산지시 동시 진행 - 주문 ID: {}", partOrder.getId());
 
             try {
                 // 1. 먼저 자재 구매요청 처리 (실패 가능한 작업을 먼저 수행)
@@ -607,7 +852,7 @@ public class PartOrderService {
 
         } else {
             // 자재 충분 시: 생산지시만 (외부 API 호출 없음)
-            log.info("자재 충분으로 생산지시만 진행 - 주문 ID: {}", partOrder.getId());
+            log.info("자재 충��으로 생산지시만 진행 - 주문 ID: {}", partOrder.getId());
 
             // 생산지시 처리
             partOrder.startProgress();
@@ -617,6 +862,10 @@ public class PartOrderService {
         }
 
         partOrderRepository.save(partOrder);
+
+        // MRP 결과 적용으로 상태가 변경된 경우 이벤트 발행
+        partOrderEventService.recordPartOrderStatusChanged(partOrder);
+
         return toResponseDto(partOrder);
     }
 
@@ -686,190 +935,6 @@ public class PartOrderService {
         }
 
         log.info("일괄 MRP 결과 적용 완료 - 공장 ID: {}, 성공: {}, 실패: {}", factoryId, successCount, failCount);
-        return results;
-    }
-
-    // 자재 구매요청 처리 (자재 부족 시 호출) - 종류별 단건 요청으로 변경
-    private void requestMaterialPurchase(PartOrder partOrder) {
-        log.info("자재 구매요청 처리 시작 - 주문 ID: {}", partOrder.getId());
-
-        // 자재별로 부족량을 집계
-        Map<Long, MaterialPurchaseInfo> materialRequirements = new HashMap<>();
-
-        for (PartOrderItem item : partOrder.getItems()) {
-            BomProjection bomProjection = bomProjectionRepository.findByPartId(item.getPartId())
-                .orElseThrow(() -> new NotFoundException(ErrorStatus.BOM_NOT_FOUND));
-            List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
-
-            for (BomMaterialProjection bomMaterial : materials) {
-                FactoryMaterial factoryMaterial = factoryMaterialRepository
-                    .findByFactoryIdAndMaterialId(partOrder.getFactory().getId(), bomMaterial.getMaterialId())
-                    .orElse(null);
-
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
-                long currentStock = factoryMaterial != null ? factoryMaterial.getQuantity() : 0;
-
-                if (currentStock < required) {
-                    long shortageAmount = required - currentStock;
-                    
-                    // 이미 집계된 자재가 있으면 부족량을 추가
-                    materialRequirements.merge(bomMaterial.getMaterialId(), 
-                        new MaterialPurchaseInfo(bomMaterial.getMaterialId(), shortageAmount),
-                        (existing, newInfo) -> new MaterialPurchaseInfo(
-                            existing.getMaterialId(), 
-                            existing.getShortageAmount() + newInfo.getShortageAmount())
-                    );
-                }
-            }
-        }
-
-        // 자재별로 개별 구매요청 생성 및 전송
-        int successCount = 0;
-        int failCount = 0;
-        List<String> failedMaterials = new ArrayList<>();
-        
-        for (MaterialPurchaseInfo materialInfo : materialRequirements.values()) {
-            try {
-                var materialProjection = materialProjectionRepository.findByMaterialId(materialInfo.getMaterialId());
-
-                String materialCode = materialProjection.map(mp -> mp.getCode()).orElse("MTL-" + materialInfo.getMaterialId());
-                String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
-                String unit = materialProjection.map(mp -> mp.getMaterialUnit()).orElse("EA");
-                Long unitPrice = 1000L; // 기본 단가
-
-                // 단일 자재로 구매요청 아이템 생성
-                List<PurchaseRequestDto.PurchaseItemDto> singleMaterialItem = List.of(
-                    PurchaseRequestDto.PurchaseItemDto.builder()
-                            .materialCode(materialCode)
-                            .materialName(materialName)
-                            .unit(unit)
-                            .quantity(materialInfo.getShortageAmount())
-                            .unitPrice(unitPrice)
-                            .build()
-                );
-
-                // 개별 구매요청 생성
-                PurchaseRequestDto purchaseRequest = PurchaseRequestDto.builder()
-                        .factoryId(partOrder.getFactory().getId())
-                        .factoryName(partOrder.getFactory().getName())
-                        .requiredAt(partOrder.getRequiredDate().toLocalDate())
-                        .requesterName("MRP 시스템")
-                        .items(singleMaterialItem)
-                        .build();
-
-                // 개별 구매요청 API 호출
-                purchaseRequestService.sendPurchaseRequest(purchaseRequest);
-                
-                log.info("자재 개별 구매요청 성공 - 주문 ID: {}, 자재코드: {}, 자재명: {}, 부족수량: {}", 
-                    partOrder.getId(), materialCode, materialName, materialInfo.getShortageAmount());
-                
-                successCount++;
-                
-            } catch (Exception e) {
-                String materialName = materialProjectionRepository.findByMaterialId(materialInfo.getMaterialId())
-                    .map(mp -> mp.getName())
-                    .orElse("UNKNOWN");
-                
-                failedMaterials.add(materialName);
-                
-                log.error("자재 개별 구매요청 실패 - 주문 ID: {}, 자재 ID: {}, 자재명: {}, 오류: {}", 
-                    partOrder.getId(), materialInfo.getMaterialId(), materialName, e.getMessage());
-                failCount++;
-            }
-        }
-
-        if (materialRequirements.isEmpty()) {
-            log.info("구매요청할 자재가 없습니다 - 주문 ID: {}", partOrder.getId());
-        } else {
-            log.info("자재 구매요청 처리 완료 - 주문 ID: {}, 성공: {}, 실패: {}, 총 자재 종류: {}", 
-                partOrder.getId(), successCount, failCount, materialRequirements.size());
-        }
-
-        // 하나라도 실패한 경우 상세한 예외 발생
-        if (failCount > 0) {
-            String errorMessage = String.format(
-                "자재 구매요청이 실패했습니다. 성공: %d, 실패: %d. 실패한 자재: %s",
-                successCount, failCount, String.join(", ", failedMaterials)
-            );
-            throw new RuntimeException(errorMessage);
-        }
-    }
-
-    // 자재 구매 정보를 담는 내부 클래스
-    private static class MaterialPurchaseInfo {
-        private final Long materialId;
-        private final Long shortageAmount;
-
-        public MaterialPurchaseInfo(Long materialId, Long shortageAmount) {
-            this.materialId = materialId;
-            this.shortageAmount = shortageAmount;
-        }
-
-        public Long getMaterialId() {
-            return materialId;
-        }
-
-        public Long getShortageAmount() {
-            return shortageAmount;
-        }
-    }
-
-    // 자재 차감 projection 기반으로 변경
-    private void deductMaterials(PartOrder partOrder) {
-        for (PartOrderItem item : partOrder.getItems()) {
-            BomProjection bomProjection = bomProjectionRepository.findByPartId(item.getPartId())
-                .orElseThrow(() -> new NotFoundException(ErrorStatus.BOM_NOT_FOUND));
-            List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
-            for (BomMaterialProjection bomMaterial : materials) {
-                FactoryMaterial factoryMaterial = factoryMaterialRepository
-                    .findByFactoryIdAndMaterialId(partOrder.getFactory().getId(), bomMaterial.getMaterialId())
-                    .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND));
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
-                factoryMaterial.decreaseQuantity(required);
-            }
-        }
-    }
-
-    // 부품 주문 생성 (아이템별 단건 주문 생성)
-    @Transactional
-    public List<PartOrderResponseDto> createPartOrdersSeparately(PartOrderRequestDto request) {
-        if (request.getItems() == null || request.getItems().isEmpty()) {
-            throw new BadRequestException(ErrorStatus.BAD_REQUEST);
-        }
-
-        log.info("부품 주문 단건 생성 시작 - 아이템 수: {}, 창고명: {}",
-            request.getItems().size(), request.getWarehouseName());
-
-        List<PartOrderResponseDto> results = new ArrayList<>();
-
-        // 각 아이템별로 개별 주문 생성
-        for (PartOrderRequestDto.PartOrderItemRequestDto item : request.getItems()) {
-            try {
-                // 단일 아이템으로 요청 DTO 생성
-                PartOrderRequestDto singleItemRequest = PartOrderRequestDto.builder()
-                        .warehouseName(request.getWarehouseName())
-                        .requiredDate(request.getRequiredDate())
-                        .items(List.of(item)) // 단일 아이템만 포함
-                        .build();
-
-                // 개별 주문 생성
-                PartOrderResponseDto orderResult = createPartOrder(singleItemRequest);
-                results.add(orderResult);
-
-                log.info("개별 부품 주문 생성 완료 - 주문 ID: {}, 부품 ID: {}, 수량: {}",
-                    orderResult.getOrderId(), item.getPartId(), item.getQuantity());
-
-            } catch (Exception e) {
-                log.error("개별 부품 주문 생성 실패 - 부품 ID: {}, 수량: {}, 오류: {}",
-                    item.getPartId(), item.getQuantity(), e.getMessage(), e);
-                // 개별 주문 실패 시에도 다른 주문은 계속 처리
-                // 하지만 실패한 아이템에 대한 정보는 로그로 남김
-            }
-        }
-
-        log.info("부품 주문 단건 생성 완료 - 총 아이템: {}, 성공한 주문: {}",
-            request.getItems().size(), results.size());
-
         return results;
     }
 }

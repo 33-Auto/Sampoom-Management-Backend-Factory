@@ -13,6 +13,10 @@ import com.sampoom.factory.api.part.dto.PartGroupEventDto;
 import com.sampoom.factory.api.part.service.PartGroupProjectionService;
 import com.sampoom.factory.api.part.service.PartProjectionService;
 import com.sampoom.factory.api.part.service.PartCategoryProjectionService;
+import com.sampoom.factory.api.factory.service.BranchFactoryDistanceService;
+import com.sampoom.factory.api.factory.dto.BranchFactoryDistanceEventDto;
+import com.sampoom.factory.api.factory.service.BranchProjectionService;
+import com.sampoom.factory.api.factory.dto.BranchEventDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -31,6 +35,8 @@ public class ProjectionEventHandler {
     private final MaterialProjectionService materialProjectionService;
     private final MaterialCategoryProjectionService materialCategoryProjectionService;
     private final BomProjectionService bomProjectionService;
+    private final BranchFactoryDistanceService branchFactoryDistanceService;
+    private final BranchProjectionService branchProjectionService;
 
     @KafkaListener(topics = "part-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handlePartEvent(String message) {
@@ -60,6 +66,16 @@ public class ProjectionEventHandler {
     @KafkaListener(topics = "bom-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handleBomEvent(String message) {
         handleEvent(message, "BomEvent", BomEventDto.class, bomProjectionService::handleBomEvent);
+    }
+
+    @KafkaListener(topics = "branch-factory-distance-events", groupId = "${spring.kafka.consumer.group-id}")
+    public void handleBranchFactoryDistanceEvent(String message) {
+        handleEvent(message, "BranchFactoryDistanceEvent", BranchFactoryDistanceEventDto.class, branchFactoryDistanceService::handleDistanceEvent);
+    }
+
+    @KafkaListener(topics = "factory-branch-events", groupId = "${spring.kafka.consumer.group-id}")
+    public void handleBranchEvent(String message) {
+        handleEvent(message, "BranchEvent", BranchEventDto.class, branchProjectionService::handleBranchEvent);
     }
 
 

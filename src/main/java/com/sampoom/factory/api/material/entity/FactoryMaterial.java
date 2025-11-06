@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.material.entity;
 
-import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.common.exception.BadRequestException;
 import com.sampoom.factory.common.response.ErrorStatus;
 import jakarta.persistence.*;
@@ -19,9 +18,8 @@ public class FactoryMaterial {
     @Column(name = "factory_material_id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "factory_id")
-    private Factory factory;
+    @Column(name = "factory_id")
+    private Long factoryId;
 
     @Column(name = "material_id")
     private Long materialId;

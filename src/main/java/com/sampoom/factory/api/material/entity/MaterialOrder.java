@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.material.entity;
 
-import com.sampoom.factory.api.factory.entity.Factory;
 import com.sampoom.factory.common.entitiy.SoftDeleteEntity;
 import com.sampoom.factory.common.exception.BadRequestException;
 import com.sampoom.factory.common.response.ErrorStatus;
@@ -8,7 +7,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
 
@@ -34,9 +32,8 @@ public class MaterialOrder extends SoftDeleteEntity {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "factory_id")
-    private Factory factory;
+    @Column(name = "factory_id")
+    private Long factoryId;
 
     public void receive() {
         if (this.status != OrderStatus.ORDERED) {

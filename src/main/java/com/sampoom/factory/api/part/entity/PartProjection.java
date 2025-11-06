@@ -51,6 +51,9 @@ public class PartProjection {
     @Column(nullable = false)
     private Long categoryId;
 
+    @Column(nullable = false)
+    private Long standardCost;
+
     // --- 동기화 안전 메타(둘 중 하나 이상 필수) ---
     @Column(nullable = false)
     private Long version;
@@ -73,7 +76,7 @@ public class PartProjection {
     public PartProjection updateFromEvent(String code, String name, String partUnit,
                                           Integer baseQuantity, Integer leadTime,
                                           PartStatus status, Boolean deleted,
-                                          Long groupId, Long categoryId,
+                                          Long groupId, Long categoryId, Long standardCost,
                                           UUID lastEventId,
                                           Long version, OffsetDateTime sourceUpdatedAt) {
         return this.toBuilder()
@@ -86,6 +89,7 @@ public class PartProjection {
                 .deleted(deleted)
                 .groupId(groupId)
                 .categoryId(categoryId)
+                .standardCost(standardCost)
                 .lastEventId(lastEventId)
                 .version(version)
                 .sourceUpdatedAt(sourceUpdatedAt)

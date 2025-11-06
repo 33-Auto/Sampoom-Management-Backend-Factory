@@ -1,6 +1,5 @@
 package com.sampoom.factory.api.part.entity;
 
-import com.sampoom.factory.api.factory.entity.Factory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,9 +24,11 @@ public class PartOrder {
     @Column(name = "version")
     private Long version; // 낙관적 락을 위한 버전 필드
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "factory_id", nullable = false)
-    private Factory factory;
+    @Column(name = "factory_id", nullable = false)
+    private Long factoryId;
+
+    @Column(name = "warehouse_id", nullable = false)
+    private Long warehouseId;
 
     @Enumerated(EnumType.STRING)
     private PartOrderStatus status;
@@ -105,6 +106,12 @@ public class PartOrder {
         this.progressRate = 1.0;
     }
 
+    // 자재 차감과 함께 생산 완료
+    public void completeWithMaterialDeduction() {
+        this.status = PartOrderStatus.COMPLETED;
+        this.progressRate = 1.0;
+    }
+
     public void requestPurchase() {
         this.status = PartOrderStatus.PURCHASE_REQUEST;
     }
@@ -152,6 +159,10 @@ public class PartOrder {
             if (now.isAfter(scheduledDate)) {
                 // 예정일이 지났으면 진행률 100%
                 this.progressRate = 1.0;
+                // 진행중 상태인 경우 자동으로 완료 처리
+                if (this.status == PartOrderStatus.IN_PROGRESS) {
+                    this.status = PartOrderStatus.COMPLETED;
+                }
             } else {
                 // 주문일부터 예정일까지의 전체 기간 대비 현재까지의 진행률
                 long totalDays = java.time.temporal.ChronoUnit.DAYS.between(orderDate.toLocalDate(), scheduledDate.toLocalDate());
@@ -163,5 +174,24 @@ public class PartOrder {
             }
         }
         updateDDay();
+    }
+
+    // 예정일 기준 자동 완료 처리 (스케줄러에서 호출용)
+    public boolean autoCompleteIfOverdue() {
+        if (scheduledDate != null && this.status == PartOrderStatus.IN_PROGRESS) {
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isAfter(scheduledDate)) {
+                this.status = PartOrderStatus.COMPLETED;
+                this.progressRate = 1.0;
+                updateDDay();
+                return true; // 완료 처리됨
+            }
+        }
+        return false; // 완료 처리되지 않음
+    }
+
+    // 예정일 경과 여부 확인
+    public boolean isOverdue() {
+        return scheduledDate != null && LocalDateTime.now().isAfter(scheduledDate);
     }
 }
