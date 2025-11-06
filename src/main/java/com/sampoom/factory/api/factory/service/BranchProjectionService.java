@@ -26,6 +26,18 @@ public class BranchProjectionService {
 
     @Transactional
     public void handleBranchEvent(BranchEventDto eventDto) {
+        final Long branchId = eventDto.getPayload().getBranchId();
+        final Long incomingVer = nvl(eventDto.getVersion(), 0L);
+
+        FactoryProjection existingProjection = factoryProjectionRepository.findById(branchId).orElse(null);
+
+        // 멱등(같은 이벤트) 차단
+        if (existingProjection != null && eventDto.getEventId() != null && existingProjection.getLastEventId() != null) {
+            if (existingProjection.getLastEventId().equals(eventDto.getEventId())) return;
+        }
+        // 역순(오래된 이벤트) 차단
+        if (existingProjection != null && incomingVer <= nvl(existingProjection.getVersion(), 0L)) return;
+
         switch (eventDto.getEventType()) {
             case "BranchCreated":
                 handleBranchCreated(eventDto);
@@ -41,6 +53,10 @@ public class BranchProjectionService {
         }
     }
 
+    private Long nvl(Long v, long def) {
+        return v == null ? def : v;
+    }
+
     private void handleBranchCreated(BranchEventDto eventDto) {
         log.info("Branch 생성 이벤트 처리: branchId={}", eventDto.getPayload().getBranchId());
 
@@ -53,6 +69,8 @@ public class BranchProjectionService {
                 .longitude(eventDto.getPayload().getLongitude())
                 .status(FactoryStatus.valueOf(eventDto.getPayload().getStatus()))
                 .deleted(eventDto.getPayload().getDeleted())
+                .version(nvl(eventDto.getVersion(), 0L))
+                .lastEventId(eventDto.getEventId())
                 .build();
 
         factoryProjectionRepository.save(projection);
@@ -104,7 +122,9 @@ public class BranchProjectionService {
                 eventDto.getPayload().getLatitude(),
                 eventDto.getPayload().getLongitude(),
                 FactoryStatus.valueOf(eventDto.getPayload().getStatus()),
-                eventDto.getPayload().getDeleted()
+                eventDto.getPayload().getDeleted(),
+                nvl(eventDto.getVersion(), 0L),
+                eventDto.getEventId()
         );
 
         factoryProjectionRepository.save(projection);
@@ -124,7 +144,9 @@ public class BranchProjectionService {
                 projection.getLatitude(),
                 projection.getLongitude(),
                 projection.getStatus(),
-                true // deleted = true
+                true, // deleted = true
+                nvl(eventDto.getVersion(), 0L),
+                eventDto.getEventId()
         );
 
         factoryProjectionRepository.save(projection);

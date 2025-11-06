@@ -6,6 +6,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "factory_projection")
@@ -41,16 +43,22 @@ public class FactoryProjection {
     @Column(name = "deleted", nullable = false)
     private Boolean deleted;
 
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    // --- 동기화 안전 메타 ---
+    @Column(nullable = false)
+    private Long version;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "last_event_id", columnDefinition = "uuid")
+    private UUID lastEventId;
+
+    @Column(nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @Column
+    private OffsetDateTime sourceUpdatedAt;
 
     public void updateFromEvent(String branchCode, String branchName, String address,
-                               Double latitude, Double longitude, FactoryStatus status, Boolean deleted) {
+                               Double latitude, Double longitude, FactoryStatus status, Boolean deleted,
+                               Long version, UUID eventId) {
         this.branchCode = branchCode;
         this.branchName = branchName;
         this.address = address;
@@ -58,5 +66,7 @@ public class FactoryProjection {
         this.longitude = longitude;
         this.status = status;
         this.deleted = deleted;
+        this.version = version;
+        this.lastEventId = eventId;
     }
 }

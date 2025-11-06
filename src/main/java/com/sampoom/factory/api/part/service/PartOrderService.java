@@ -51,6 +51,7 @@ public class PartOrderService {
     private final PurchaseRequestService purchaseRequestService; // 구매요청 서비스 추가
     private final PartOrderCodeGenerator partOrderCodeGenerator; // 주문 코드 생성기 추가
     private final BranchFactoryDistanceRepository branchFactoryDistanceRepository; // 거리 정보 Repository 추가
+    private final PartOrderEventService partOrderEventService; // 이벤트 서비스 추가
 
     // 새로운 주문 흐름: 검토중 -> MRP 실행 -> 구매요청/계획확정 -> 진행중 -> 완료
     @Transactional
@@ -67,6 +68,7 @@ public class PartOrderService {
         // 주문 생성 (초기 상태: 검토중)
         PartOrder partOrder = PartOrder.builder()
                 .factoryId(factory.getBranchId())
+                .warehouseId(request.getWarehouseId())
                 .status(PartOrderStatus.UNDER_REVIEW)
                 .warehouseName(request.getWarehouseName())
                 .orderDate(LocalDateTime.now())
@@ -95,6 +97,9 @@ public class PartOrderService {
         );
 
         partOrderRepository.save(partOrder);
+
+        // 부품 주문 생성 이벤트 발행
+        partOrderEventService.recordPartOrderCreated(partOrder);
 
         // 주문 생성 시에는 MRP를 자동으로 실행하지 않음 (별도 API로 분리)
         log.info("부품 주문 생성 완료 - 주문 ID: {}, 상태: {}, 우선순위: {}, 자재가용성: {}",
@@ -238,6 +243,9 @@ public class PartOrderService {
         }
 
         partOrderRepository.save(partOrder);
+
+        // MRP 실행으로 상태가 변경된 경우 이벤트 발행
+        partOrderEventService.recordPartOrderStatusChanged(partOrder);
     }
 
     // 부품별 리드타임을 고려한 생산 소요 시간 계산
@@ -332,6 +340,9 @@ public class PartOrderService {
 
         partOrder.complete();
         partOrderRepository.save(partOrder);
+
+        // 주문 완료 이벤트 발행
+        partOrderEventService.recordPartOrderCompleted(partOrder);
 
         return toResponseDto(partOrder);
     }
@@ -795,6 +806,9 @@ public class PartOrderService {
 
         partOrderRepository.save(partOrder);
 
+        // 생산지시로 상태가 변경된 경우 이벤트 발행
+        partOrderEventService.recordPartOrderStatusChanged(partOrder);
+
         return toResponseDto(partOrder);
     }
 
@@ -848,6 +862,10 @@ public class PartOrderService {
         }
 
         partOrderRepository.save(partOrder);
+
+        // MRP 결과 적용으로 상태가 변경된 경우 이벤트 발행
+        partOrderEventService.recordPartOrderStatusChanged(partOrder);
+
         return toResponseDto(partOrder);
     }
 

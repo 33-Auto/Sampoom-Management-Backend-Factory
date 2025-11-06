@@ -61,6 +61,7 @@ public class MaterialProjectionService {
                 .materialId(eventDto.getPayload().getMaterialId())
                 .code(eventDto.getPayload().getMaterialCode())
                 .name(eventDto.getPayload().getName())
+                .baseQuantity(eventDto.getPayload().getBaseQuantity())
                 .categoryId(eventDto.getPayload().getMaterialCategoryId())
                 .standardCost(eventDto.getPayload().getStandardCost())
                 .materialUnit(eventDto.getPayload().getMaterialUnit())
