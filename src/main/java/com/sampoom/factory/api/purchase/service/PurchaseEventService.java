@@ -69,6 +69,12 @@ public class PurchaseEventService {
 
         log.info("구매 주문 입고 처리 완료 - 주문ID: {}, 성공: {}, 실패: {}",
                 payload.getOrderId(), successCount, failCount);
+
+        if (failCount > 0) {
+                        throw new RuntimeException(String.format(
+                                        "구매 주문 입고 처리 중 일부 자재가 실패했습니다. 성공: %d, 실패: %d, 주문ID: %d",
+                                        successCount, failCount, payload.getOrderId()));
+                    }
     }
 
     private void processMaterialReceiving(Long factoryId, PurchaseEventDto.MaterialItem material) {
