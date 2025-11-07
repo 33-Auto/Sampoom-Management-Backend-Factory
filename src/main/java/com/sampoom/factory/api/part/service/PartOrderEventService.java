@@ -57,6 +57,10 @@ public class PartOrderEventService {
     // ===== 공통 헬퍼 =====
     private void enqueueEvent(String eventType, PartOrder partOrder, long version, Boolean deleted) {
         try {
+            // 디버깅: externalPartOrderId 값 로깅
+            log.info("디버깅 - PartOrder ID: {}, externalPartOrderId 값: {}",
+                    partOrder.getId(), partOrder.getExternalPartOrderId());
+
             // Factory 정보 조회
             var factory = factoryProjectionRepository.findById(partOrder.getFactoryId())
                     .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
@@ -75,28 +79,37 @@ public class PartOrderEventService {
                     })
                     .collect(Collectors.toList());
 
+            // 디버깅: 이벤트 생성 전 externalPartOrderId 값 다시 확인
+            Long externalPartOrderId = partOrder.getExternalPartOrderId();
+            log.info("디버깅 - 이벤트 생성 시 externalPartOrderId: {}", externalPartOrderId);
+
             PartOrderEvent evt = new PartOrderEvent(
                     UUID.randomUUID().toString(),
                     eventType,
                     version,
                     OffsetDateTime.now().toString(),
                     new PartOrderEvent.Payload(
-                            partOrder.getId(),
-                            partOrder.getOrderCode(),
-                            partOrder.getFactoryId(),
-                            factory.getBranchName(),
-                            partOrder.getWarehouseId(),
-                            partOrder.getWarehouseName(),
-                            partOrder.getStatus().name(),
-                            partOrder.getRequiredDate() != null ? partOrder.getRequiredDate().toString() : null,
-                            partOrder.getScheduledDate() != null ? partOrder.getScheduledDate().toString() : null,
-                            partOrder.getProgressRate(),
-                            partOrder.getPriority() != null ? partOrder.getPriority().name() : null,
-                            partOrder.getMaterialAvailability() != null ? partOrder.getMaterialAvailability().name() : null,
-                            itemPayloads,
-                            deleted
+                            partOrder.getId(),                    // partOrderId
+                            partOrder.getOrderCode(),             // orderCode
+                            partOrder.getFactoryId(),             // factoryId
+                            factory.getBranchName(),              // factoryName
+                            partOrder.getWarehouseId(),           // warehouseId
+                            partOrder.getWarehouseName(),         // warehouseName
+                            partOrder.getStatus().name(),         // status
+                            partOrder.getRequiredDate() != null ? partOrder.getRequiredDate().toString() : null, // requiredDate
+                            partOrder.getScheduledDate() != null ? partOrder.getScheduledDate().toString() : null, // scheduledDate
+                            partOrder.getProgressRate(),          // progressRate
+                            partOrder.getPriority() != null ? partOrder.getPriority().name() : null, // priority
+                            partOrder.getMaterialAvailability() != null ? partOrder.getMaterialAvailability().name() : null, // materialAvailability
+                            externalPartOrderId,                  // externalPartOrderId - 올바른 위치
+                            itemPayloads,                         // items
+                            deleted                               // deleted
                     )
             );
+
+            // 디버깅: 최종 이벤트 페이로드의 externalPartOrderId 확인
+            log.info("디버깅 - 최종 이벤트 페이로드 externalPartOrderId: {}",
+                    evt.payload().externalPartOrderId());
 
             JsonNode payload = objectMapper.valueToTree(evt);
             outboxRepository.save(

@@ -77,6 +77,7 @@ public class PartOrderService {
                 .orderDate(LocalDateTime.now())
                 .requiredDate(request.getRequiredDate()) // 고객 요청 필요일 설정
                 .orderCode(orderCode) // 자동 생성된 주문 코드 설정
+                .externalPartOrderId(request.getExternalPartOrderId()) // 외부 주문 ID 설정
                 .build();
 
         List<PartOrderItem> items = new ArrayList<>();
@@ -101,12 +102,10 @@ public class PartOrderService {
 
         partOrderRepository.save(partOrder);
 
-        // 부품 주문 생성 이벤트 발행
-        partOrderEventService.recordPartOrderCreated(partOrder);
 
         // 주문 생성 시에는 MRP를 자동으로 실행하지 않음 (별도 API로 분리)
-        log.info("부품 주문 생성 완료 - 주문 ID: {}, 상태: {}, 우선순위: {}, 자재가용성: {}",
-            partOrder.getId(), partOrder.getStatus(), partOrder.getPriority(), partOrder.getMaterialAvailability());
+        log.info("부품 주문 생성 완료 - 주문 ID: {}, 상태: {}, 우선순위: {}, 자재가용성: {}, 외부주문ID: {}",
+            partOrder.getId(), partOrder.getStatus(), partOrder.getPriority(), partOrder.getMaterialAvailability(), request.getExternalPartOrderId());
 
         return toResponseDto(partOrder);
     }
@@ -207,6 +206,9 @@ public class PartOrderService {
     @Transactional
     public void executeMRPLogic(PartOrder partOrder) {
         log.info("MRP 실행 시작 - 주문 ID: {}", partOrder.getId());
+
+        // 디버깅: MRP 실행 시 externalPartOrderId 값 확인
+        log.info("디버깅 - MRP 실행 시 externalPartOrderId: {}", partOrder.getExternalPartOrderId());
 
         // 부품별 리드타임을 고려한 생산 소요 시간 계산
         int maxProductionLeadTime = calculateProductionLeadTime(partOrder);
@@ -625,6 +627,7 @@ public class PartOrderService {
                 .status(partOrder.getStatus().name())
                 .factoryId(factory.getBranchId())
                 .factoryName(factory.getBranchName())
+                .externalPartOrderId(partOrder.getExternalPartOrderId())
                 .requiredDate(partOrder.getRequiredDate())
                 .scheduledDate(partOrder.getScheduledDate())
                 .progressRate(partOrder.getProgressRate())
@@ -671,6 +674,7 @@ public class PartOrderService {
                 .status(displayStatus)
                 .factoryId(factory.getBranchId())
                 .factoryName(factory.getBranchName())
+                 .externalPartOrderId(partOrder.getExternalPartOrderId())
                 .requiredDate(partOrder.getRequiredDate())
                 .scheduledDate(partOrder.getScheduledDate())
                 .progressRate(partOrder.getProgressRate())
@@ -914,80 +918,99 @@ public class PartOrderService {
             throw new BadRequestException(ErrorStatus.BAD_REQUEST);
         }
 
-        log.info("부품 주문 단건 생성 시작 - 아이템 수: {}, 창고ID: {}, 창고명: {}",
-            request.getItems().size(), request.getWarehouseId(), request.getWarehouseName());
+        log.info("부품 주문 단건 생성 시작 - 아이템 수: {}, 창고ID: {}, 창고명: {}, 외부주문ID: {}",
+            request.getItems().size(), request.getWarehouseId(), request.getWarehouseName(), request.getExternalPartOrderId());
 
         List<PartOrderResponseDto> results = new ArrayList<>();
 
         // 각 아이템별로 개별 주문 생성
         for (PartOrderRequestDto.PartOrderItemRequestDto item : request.getItems()) {
             try {
+                // 이벤트에서 온 데이터인 경우 materialId를 partId로 매핑
+                Long partId = item.getPartId() != null ? item.getPartId() : item.getMaterialId();
+                Long quantity = item.getQuantity() != null ? item.getQuantity() :
+                               (item.getRequestQuantity() != null ? item.getRequestQuantity().longValue() : null);
+
+                if (partId == null || quantity == null) {
+                    log.warn("부족한 아이템 정보 - partId: {}, materialId: {}, quantity: {}, requestQuantity: {}",
+                            item.getPartId(), item.getMaterialId(), item.getQuantity(), item.getRequestQuantity());
+                    continue;
+                }
+
                 // 단일 아이템으로 요청 DTO 생성
+                PartOrderRequestDto.PartOrderItemRequestDto singleItem = PartOrderRequestDto.PartOrderItemRequestDto.builder()
+                        .partId(partId)
+                        .quantity(quantity)
+                        .build();
+
                 PartOrderRequestDto singleItemRequest = PartOrderRequestDto.builder()
-                        .warehouseId(request.getWarehouseId()) // 창고 ID 추가
+                        .warehouseId(request.getWarehouseId())
                         .warehouseName(request.getWarehouseName())
                         .requiredDate(request.getRequiredDate())
-                        .items(List.of(item)) // 단일 아이템만 포함
+                        .externalPartOrderId(request.getExternalPartOrderId())
+                        .items(List.of(singleItem))
                         .build();
 
                 // 개별 주문 생성
                 PartOrderResponseDto orderResult = createPartOrder(singleItemRequest);
                 results.add(orderResult);
 
-                log.info("개별 부품 주문 생성 완료 - 주문 ID: {}, 부품 ID: {}, 수량: {}",
-                    orderResult.getOrderId(), item.getPartId(), item.getQuantity());
+                log.info("개별 부품 주문 생성 완료 - 주문 ID: {}, 부품 ID: {}, 수량: {}, 외부주문ID: {}",
+                    orderResult.getOrderId(), partId, quantity, request.getExternalPartOrderId());
 
             } catch (Exception e) {
                 log.error("개별 부품 주문 생성 실패 - 부품 ID: {}, 수량: {}, 오류: {}",
-                    item.getPartId(), item.getQuantity(), e.getMessage(), e);
+                    item.getPartId() != null ? item.getPartId() : item.getMaterialId(),
+                    item.getQuantity() != null ? item.getQuantity() : item.getRequestQuantity(),
+                    e.getMessage(), e);
                 // 개별 주문 실패 시에도 다른 주문은 계속 처리
                 // 하지만 실패한 아이템에 대한 정보는 로그로 남김
             }
         }
 
-        log.info("부품 주문 단건 생성 완료 - 총 아이템: {}, 성공한 주문: {}",
-            request.getItems().size(), results.size());
+        log.info("부품 주문 단건 생성 완료 - 총 아이템: {}, 성공한 주문: {}, 외부주문ID: {}",
+            request.getItems().size(), results.size(), request.getExternalPartOrderId());
 
         return results;
     }
 
-    // 생산지시 API (계획확정 상태에서 진행중으로 변경) - 동시성 제어 추가
-    @Transactional
-    public PartOrderResponseDto startProduction(Long factoryId, Long orderId) {
-        // 비관적 락을 사용하여 동시성 제어
-        PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
-                .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
-
-        // PLAN_CONFIRMED 또는 DELAYED 상태에서 생산지시 가능
-        if (partOrder.getStatus() != PartOrderStatus.PLAN_CONFIRMED &&
-            partOrder.getStatus() != PartOrderStatus.DELAYED) {
-            throw new BadRequestException(ErrorStatus.INVALID_ORDER_STATUS);
-        }
-
-        // 이미 진행중인 상태인 경우 중복 처리 방지
-        if (partOrder.getStatus() == PartOrderStatus.IN_PROGRESS) {
-            log.warn("주문이 이미 진행중 상태입니다 - 주문 ID: {}", partOrder.getId());
-            return toResponseDto(partOrder);
-        }
-
-        // 진행중 상태로 변경
-        partOrder.startProgress();
-
-        // 자재 차감 (자재가 충분한 경우에만)
-        if (partOrder.getMaterialAvailability() == MaterialAvailability.SUFFICIENT) {
-            deductMaterials(partOrder);
-            log.info("생산지시 완료 및 자재 차감 - 주문 ID: {}", partOrder.getId());
-        } else {
-            log.info("자재 부족으로 자재 차감 없이 생산지시만 완료 - 주문 ID: {}", partOrder.getId());
-        }
-
-        partOrderRepository.save(partOrder);
-
-        // 생산지시로 상태가 변경된 경우 이벤트 발행
-        partOrderEventService.recordPartOrderStatusChanged(partOrder);
-
-        return toResponseDto(partOrder);
-    }
+//    // 생산지시 API (계획확정 상태에서 진행중으로 변경) - 동시성 제어 추가
+//    @Transactional
+//    public PartOrderResponseDto startProduction(Long factoryId, Long orderId) {
+//        // 비관적 락을 사용하여 동시성 제어
+//        PartOrder partOrder = partOrderRepository.findByIdAndFactoryIdWithLock(orderId, factoryId)
+//                .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
+//
+//        // PLAN_CONFIRMED 또는 DELAYED 상태에서 생산지시 가능
+//        if (partOrder.getStatus() != PartOrderStatus.PLAN_CONFIRMED &&
+//            partOrder.getStatus() != PartOrderStatus.DELAYED) {
+//            throw new BadRequestException(ErrorStatus.INVALID_ORDER_STATUS);
+//        }
+//
+//        // 이미 진행중인 상태인 경우 중복 처리 방지
+//        if (partOrder.getStatus() == PartOrderStatus.IN_PROGRESS) {
+//            log.warn("주문이 이미 진행중 상태입니다 - 주문 ID: {}", partOrder.getId());
+//            return toResponseDto(partOrder);
+//        }
+//
+//        // 진행중 상태로 변경
+//        partOrder.startProgress();
+//
+//        // 자재 차감 (자재가 충분한 경우에만)
+//        if (partOrder.getMaterialAvailability() == MaterialAvailability.SUFFICIENT) {
+//            deductMaterials(partOrder);
+//            log.info("생산지시 완료 및 자재 차감 - 주문 ID: {}", partOrder.getId());
+//        } else {
+//            log.info("자재 부족으로 자재 차감 없이 생산지시만 완료 - 주문 ID: {}", partOrder.getId());
+//        }
+//
+//        partOrderRepository.save(partOrder);
+//
+//        // 생산지시로 상태가 변경된 경우 이벤트 발행
+//        partOrderEventService.recordPartOrderStatusChanged(partOrder);
+//
+//        return toResponseDto(partOrder);
+//    }
 
     // MRP 결과 적용 API (클라이언트의 "결과적용" 버튼) - 동시성 제어 추가
     @Transactional
@@ -1101,6 +1124,10 @@ public class PartOrderService {
                 }
 
                 partOrderRepository.save(partOrder);
+
+                // MRP 결과 적용으로 상태가 변경된 경우 이벤트 발행
+                partOrderEventService.recordPartOrderStatusChanged(partOrder);
+
                 results.add(toResponseDto(partOrder));
                 successCount++;
 

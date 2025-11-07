@@ -22,6 +22,7 @@ public record PartOrderEvent(
             Double progressRate,
             String priority,
             String materialAvailability,
+            Long externalPartOrderId,  // 외부 시스템의 주문 ID 추가
             List<PartOrderItemPayload> items,
             Boolean deleted
     ) {}

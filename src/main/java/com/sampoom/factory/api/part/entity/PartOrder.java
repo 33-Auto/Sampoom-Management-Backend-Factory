@@ -46,6 +46,9 @@ public class PartOrder extends BaseTimeEntity {
     @Column(name = "order_code", unique = true)
     private String orderCode; // WO-2025-001 형태의 주문 코드
 
+    @Column(name = "external_part_order_id")
+    private Long externalPartOrderId; // 외부 시스템의 주문 ID
+
     // 새로 추가된 필드들
     @Column(name = "scheduled_date")
     private LocalDateTime scheduledDate; // MRP 실행 후 계산된 예정일

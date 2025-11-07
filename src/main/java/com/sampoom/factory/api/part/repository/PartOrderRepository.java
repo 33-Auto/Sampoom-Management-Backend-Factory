@@ -174,7 +174,7 @@ public interface PartOrderRepository extends JpaRepository<PartOrder, Long> {
                                                   Pageable pageable);
 
     // 스케줄러 및 코드 생성기용 메서드들 추가
-    @Query("SELECT po FROM PartOrder po WHERE po.orderCode LIKE CONCAT(:prefix, '%') ORDER BY po.orderCode DESC")
+    @Query(value = "SELECT * FROM part_order WHERE order_code LIKE CONCAT(:prefix, '%') ORDER BY order_code DESC LIMIT 1", nativeQuery = true)
     Optional<PartOrder> findTopByOrderCodeStartingWithOrderByOrderCodeDesc(@Param("prefix") String prefix);
 
     List<PartOrder> findByStatus(PartOrderStatus status);
