@@ -35,6 +35,10 @@ public class OrderToFactoryEventService {
     }
 
     private PartOrderRequestDto convertEventToRequest(OrderToFactoryEventDto event) {
+
+        if (event.getItems() == null || event.getItems().isEmpty()) {
+                        throw new IllegalArgumentException("OrderToFactoryEvent items must not be null or empty");
+                    }
         // OrderToFactoryEventDto를 PartOrderRequestDto로 변환
         List<PartOrderRequestDto.PartOrderItemRequestDto> items = event.getItems().stream()
                 .map(item -> PartOrderRequestDto.PartOrderItemRequestDto.builder()
