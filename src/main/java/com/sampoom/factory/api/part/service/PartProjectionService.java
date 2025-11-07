@@ -58,11 +58,13 @@ public class PartProjectionService {
                 .partUnit(payload.getPartUnit())
                 .baseQuantity(payload.getBaseQuantity())
                 .leadTime(payload.getLeadTime())
+                .standardQuantity(payload.getStandardQuantity())     // 새로 추가된 필드
                 .status(PartStatus.valueOf(payload.getStatus()))
                 .deleted(payload.getDeleted())
                 .groupId(payload.getGroupId())
                 .categoryId(payload.getCategoryId())
                 .standardCost(payload.getStandardCost())
+                .standardTotalCost(payload.getStandardTotalCost())   // 새로 추가된 필드
                 .lastEventId(eventDto.getEventId())
                 .version(eventDto.getVersion())
                 .sourceUpdatedAt(eventDto.getOccurredAt())
@@ -90,11 +92,13 @@ public class PartProjectionService {
                 payload.getPartUnit(),
                 payload.getBaseQuantity(),
                 payload.getLeadTime(),
+                payload.getStandardQuantity(),        // 새로 추가된 필드
                 PartStatus.valueOf(payload.getStatus()),
                 payload.getDeleted(),
                 payload.getGroupId(),
                 payload.getCategoryId(),
                 payload.getStandardCost(),
+                payload.getStandardTotalCost(),       // 새로 추가된 필드
                 eventDto.getEventId(),
                 eventDto.getVersion(),
                 eventDto.getOccurredAt()
@@ -122,11 +126,13 @@ public class PartProjectionService {
                 currentPart.getPartUnit(),
                 currentPart.getBaseQuantity(),
                 currentPart.getLeadTime(),
+                currentPart.getStandardQuantity(),     // 새로 추가된 필드
                 currentPart.getStatus(),
                 true, // deleted = true
                 currentPart.getGroupId(),
                 currentPart.getCategoryId(),
                 currentPart.getStandardCost(),
+                currentPart.getStandardTotalCost(),   // 새로 추가된 필드
                 eventDto.getEventId(),
                 eventDto.getVersion(),
                 eventDto.getOccurredAt()

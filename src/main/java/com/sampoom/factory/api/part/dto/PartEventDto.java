@@ -27,10 +27,12 @@ public class PartEventDto {
         private String partUnit;
         private Integer baseQuantity;
         private Integer leadTime;
+        private Integer standardQuantity;     // 새로 추가된 필드
         private String status;
         private Boolean deleted;
         private Long groupId;
         private Long categoryId;
         private Long standardCost;
+        private Long standardTotalCost;      // 새로 추가된 필드
     }
 }

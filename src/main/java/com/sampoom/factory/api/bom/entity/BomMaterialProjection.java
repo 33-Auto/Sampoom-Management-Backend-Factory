@@ -34,9 +34,9 @@ public class BomMaterialProjection {
     private String unit;
 
     @Column(nullable = false)
-    private Integer quantity;
+    private Double quantity;                     // Integer에서 Double로 변경
 
-    public BomMaterialProjection updateFromEvent(String materialName, String materialCode, String unit, Integer quantity) {
+    public BomMaterialProjection updateFromEvent(String materialName, String materialCode, String unit, Double quantity) {
         return this.toBuilder()
                 .materialName(materialName)
                 .materialCode(materialCode)

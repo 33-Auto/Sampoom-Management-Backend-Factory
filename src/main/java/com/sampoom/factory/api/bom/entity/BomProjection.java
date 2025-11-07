@@ -41,6 +41,9 @@ public class BomProjection {
     @Column(nullable = false)
     private String complexity;
 
+    @Column
+    private Double totalCost;                     // 새로 추가된 필드
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean deleted = false;
@@ -58,13 +61,14 @@ public class BomProjection {
     private OffsetDateTime updatedAt;
 
 
-    public BomProjection updateFromEvent(String partCode, String partName, String status, String complexity, Boolean deleted,
+    public BomProjection updateFromEvent(String partCode, String partName, String status, String complexity, Double totalCost, Boolean deleted,
                                          UUID lastEventId, Long version, OffsetDateTime sourceUpdatedAt) {
         return this.toBuilder()
                 .partCode(partCode)
                 .partName(partName)
                 .status(status)
                 .complexity(complexity)
+                .totalCost(totalCost)                // 새로 추가된 필드
                 .deleted(deleted)
                 .lastEventId(lastEventId)
                 .version(version)

@@ -41,6 +41,9 @@ public class PartProjection {
     @Column(nullable = false)
     private Integer leadTime;
 
+    @Column(nullable = false)
+    private Integer standardQuantity;     // 새로 추가된 필드
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PartStatus status;
@@ -53,6 +56,9 @@ public class PartProjection {
 
     @Column(nullable = false)
     private Long standardCost;
+
+    @Column(nullable = false)
+    private Long standardTotalCost;       // 새로 추가된 필드
 
     // --- 동기화 안전 메타(둘 중 하나 이상 필수) ---
     @Column(nullable = false)
@@ -75,8 +81,8 @@ public class PartProjection {
     // 업데이트 메서드
     public PartProjection updateFromEvent(String code, String name, String partUnit,
                                           Integer baseQuantity, Integer leadTime,
-                                          PartStatus status, Boolean deleted,
-                                          Long groupId, Long categoryId, Long standardCost,
+                                          Integer standardQuantity, PartStatus status, Boolean deleted,
+                                          Long groupId, Long categoryId, Long standardCost, Long standardTotalCost,
                                           UUID lastEventId,
                                           Long version, OffsetDateTime sourceUpdatedAt) {
         return this.toBuilder()
@@ -85,11 +91,13 @@ public class PartProjection {
                 .partUnit(partUnit)
                 .baseQuantity(baseQuantity)
                 .leadTime(leadTime)
+                .standardQuantity(standardQuantity)
                 .status(status)
                 .deleted(deleted)
                 .groupId(groupId)
                 .categoryId(categoryId)
                 .standardCost(standardCost)
+                .standardTotalCost(standardTotalCost)
                 .lastEventId(lastEventId)
                 .version(version)
                 .sourceUpdatedAt(sourceUpdatedAt)

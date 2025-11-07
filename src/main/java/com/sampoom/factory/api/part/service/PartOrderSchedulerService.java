@@ -96,7 +96,7 @@ public class PartOrderSchedulerService {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
                     .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND));
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
                 factoryMaterial.decreaseQuantity(required);
             }
         }

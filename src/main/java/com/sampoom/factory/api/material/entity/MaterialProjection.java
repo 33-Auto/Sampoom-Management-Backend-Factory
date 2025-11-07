@@ -39,10 +39,16 @@ public class MaterialProjection {
     private Integer baseQuantity;
 
     @Column(nullable = false)
+    private Integer standardQuantity;     // 새로 추가된 필드
+
+    @Column(nullable = false)
     private Integer leadTime;
 
     @Column(nullable = false)
     private Long standardCost;
+
+    @Column(nullable = false)
+    private Long standardTotalCost;       // 새로 추가된 필드
 
     @Column(nullable = false)
     private Long categoryId;
@@ -67,7 +73,7 @@ public class MaterialProjection {
 
     // 업데이트 메서드
     public MaterialProjection updateFromEvent(String code, String name, String materialUnit,
-                                          Integer baseQuantity, Integer leadTime, Long standardCost,
+                                          Integer baseQuantity, Integer standardQuantity, Integer leadTime, Long standardCost, Long standardTotalCost,
                                            Boolean deleted,
                                            Long categoryId,
                                           UUID lastEventId,
@@ -77,8 +83,10 @@ public class MaterialProjection {
                 .name(name)
                 .materialUnit(materialUnit)
                 .baseQuantity(baseQuantity)
+                .standardQuantity(standardQuantity)
                 .leadTime(leadTime)
                 .standardCost(standardCost)
+                .standardTotalCost(standardTotalCost)
                 .deleted(deleted)
                 .categoryId(categoryId)
                 .lastEventId(lastEventId)

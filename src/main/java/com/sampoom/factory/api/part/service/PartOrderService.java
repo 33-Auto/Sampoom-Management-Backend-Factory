@@ -119,7 +119,7 @@ public class PartOrderService {
             List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
             for (BomMaterialProjection bomMaterial : materials) {
                 Long materialId = bomMaterial.getMaterialId();
-                Long requiredQuantity = (long) bomMaterial.getQuantity() * item.getQuantity();
+                Long requiredQuantity = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 Long으로 변환
                 materialQuantities.merge(materialId, requiredQuantity, Long::sum);
             }
         }
@@ -136,7 +136,7 @@ public class PartOrderService {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
                     .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElse(null);
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
                 if (factoryMaterial == null || factoryMaterial.getQuantity() < required) {
                     return true; // 자재 부족
                 }
@@ -284,7 +284,7 @@ public class PartOrderService {
                         .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                         .orElse(null);
 
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
 
                 if (factoryMaterial == null || factoryMaterial.getQuantity() < required) {
                     materialShortage = true;
@@ -777,7 +777,7 @@ public class PartOrderService {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
                     .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND));
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
                 factoryMaterial.decreaseQuantity(required);
             }
         }
@@ -800,7 +800,7 @@ public class PartOrderService {
                     .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElse(null);
 
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
                 long currentStock = factoryMaterial != null ? factoryMaterial.getQuantity() : 0;
 
                 if (currentStock < required) {
