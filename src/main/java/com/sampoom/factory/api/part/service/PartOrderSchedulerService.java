@@ -119,14 +119,21 @@ public class PartOrderSchedulerService {
 
         for (PartOrder order : inProgressOrders) {
             try {
+                // 이전 상태 저장
+                PartOrderStatus previousStatus = order.getStatus();
+
                 // 진행률 계산 (이미 자동 완료 로직 포함)
                 order.calculateProgressByDate();
                 partOrderRepository.save(order);
                 updatedCount++;
 
-                // 자동 완료되었는지 확인
-                if (order.getStatus() == PartOrderStatus.COMPLETED) {
+                // 자동 완료되었는지 확인 및 이벤트 발행
+                if (previousStatus == PartOrderStatus.IN_PROGRESS && order.getStatus() == PartOrderStatus.COMPLETED) {
                     autoCompletedCount++;
+
+                    // 진행률 업데이트 중 자동 완료된 주문에 대해 이벤트 발행
+                    partOrderEventService.recordPartOrderCompleted(order);
+
                     log.info("진행률 업데이트 중 자동 완료된 주문: 주문ID={}, 주문코드={}",
                         order.getId(), order.getOrderCode());
                 }

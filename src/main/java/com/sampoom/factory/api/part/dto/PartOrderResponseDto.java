@@ -16,6 +16,7 @@ public class PartOrderResponseDto {
     private String status;
     private String factoryName;
     private Long factoryId;
+    private Long externalPartOrderId; // 외부 시스템의 주문 ID
 
     // 날짜 관련 필드들
     private LocalDateTime requiredDate; // 고객이 요청한 필요일

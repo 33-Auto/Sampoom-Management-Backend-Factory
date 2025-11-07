@@ -63,15 +63,7 @@ public class PartOrderController {
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 
-    @Operation(summary = "생산지시", description = "계획확정된 부품 주문을 진행중 상태로 변경합니다.")
-    @PostMapping("/order/{orderId}/start-production")
-    public ResponseEntity<ApiResponse<PartOrderResponseDto>> startProduction(
-            @PathVariable Long factoryId,
-            @PathVariable Long orderId
-    ) {
-        PartOrderResponseDto response = partOrderService.startProduction(factoryId, orderId);
-        return ApiResponse.success(SuccessStatus.OK, response);
-    }
+
 
     @Operation(summary = "부품 주문 조회", description = "특정 부품 주문의 상세 정보를 조회합니다.")
     @GetMapping("/order/{orderId}")

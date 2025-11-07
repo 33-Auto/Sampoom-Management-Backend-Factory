@@ -10,9 +10,8 @@ import com.sampoom.factory.api.material.service.MaterialProjectionService;
 import com.sampoom.factory.api.part.dto.PartEventDto;
 import com.sampoom.factory.api.part.dto.PartCategoryEventDto;
 import com.sampoom.factory.api.part.dto.PartGroupEventDto;
-import com.sampoom.factory.api.part.service.PartGroupProjectionService;
-import com.sampoom.factory.api.part.service.PartProjectionService;
-import com.sampoom.factory.api.part.service.PartCategoryProjectionService;
+import com.sampoom.factory.api.part.dto.OrderToFactoryEventDto;
+import com.sampoom.factory.api.part.service.*;
 import com.sampoom.factory.api.factory.service.BranchFactoryDistanceService;
 import com.sampoom.factory.api.factory.dto.BranchFactoryDistanceEventDto;
 import com.sampoom.factory.api.factory.service.BranchProjectionService;
@@ -40,6 +39,7 @@ public class ProjectionEventHandler {
     private final BranchFactoryDistanceService branchFactoryDistanceService;
     private final BranchProjectionService branchProjectionService;
     private final PurchaseEventService purchaseEventService;
+    private final OrderToFactoryEventService orderToFactoryEventService;
 
     @KafkaListener(topics = "part-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handlePartEvent(String message) {
@@ -86,6 +86,10 @@ public class ProjectionEventHandler {
         handleEvent(message, "PurchaseEvent", PurchaseEventDto.class, purchaseEventService::handlePurchaseEvent);
     }
 
+    @KafkaListener(topics = "order-to-factory-events", groupId = "${spring.kafka.consumer.group-id}")
+    public void handleOrderToFactoryEvent(String message) {
+        handleEvent(message, "OrderToFactoryEvent", OrderToFactoryEventDto.class, orderToFactoryEventService::processOrderToFactoryEvent);
+    }
 
     private <T> void handleEvent(String message, String eventName, Class<T> eventClass, java.util.function.Consumer<T> handler) {
         try {
