@@ -73,6 +73,7 @@ public class BomProjectionService {
                 .partName(payload.getPartName())
                 .status(payload.getStatus())
                 .complexity(payload.getComplexity())
+                .totalCost(payload.getTotalCost())        // 새로 추가된 필드
                 .deleted(payload.getDeleted())
                 .lastEventId(eventDto.getEventId())
                 .version(eventDto.getVersion())
@@ -111,17 +112,17 @@ public class BomProjectionService {
                         .build())
                 .collect(Collectors.toList());
 
-        BomProjection updatedBom = currentBom.toBuilder()
-                .partCode(payload.getPartCode())
-                .partName(payload.getPartName())
-                .status(payload.getStatus())
-                .complexity(payload.getComplexity())
-                .deleted(payload.getDeleted())
-                .lastEventId(eventDto.getEventId())
-                .version(eventDto.getVersion())
-                .sourceUpdatedAt(eventDto.getOccurredAt())
-                .updatedAt(OffsetDateTime.now())
-                .build();
+        BomProjection updatedBom = currentBom.updateFromEvent(
+                payload.getPartCode(),
+                payload.getPartName(),
+                payload.getStatus(),
+                payload.getComplexity(),
+                payload.getTotalCost(),              // 새로 추가된 필드
+                payload.getDeleted(),
+                eventDto.getEventId(),
+                eventDto.getVersion(),
+                eventDto.getOccurredAt()
+        );
 
         bomProjectionRepository.save(updatedBom);
         if (!materials.isEmpty()) {

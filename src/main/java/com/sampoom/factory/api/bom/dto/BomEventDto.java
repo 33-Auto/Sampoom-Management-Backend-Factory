@@ -29,6 +29,7 @@ public class BomEventDto {
         private String status;
         private String complexity;
         private Boolean deleted;
+        private Double totalCost;                    // 새로 추가된 필드
         private List<BomMaterialPayload> materials;
     }
 
@@ -40,6 +41,6 @@ public class BomEventDto {
         private String materialName;
         private String materialCode;
         private String unit;
-        private Integer quantity;
+        private Double quantity;                     // Integer에서 Double로 변경
     }
 }

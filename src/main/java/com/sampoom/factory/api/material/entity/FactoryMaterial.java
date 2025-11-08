@@ -24,20 +24,23 @@ public class FactoryMaterial {
     @Column(name = "material_id")
     private Long materialId;
 
-    private Long quantity;
+    private Double quantity;  // Long에서 Double로 변경
 
-    public void increaseQuantity(Long amount) {
+    public void increaseQuantity(Double amount) {  // Long에서 Double로 변경
+        if (this.quantity == null) {
+            this.quantity = 0.0;
+        }
         this.quantity += amount;
     }
 
-    public void decreaseQuantity(Long amount) {
+    public void decreaseQuantity(Double amount) {  // Long에서 Double로 변경
         if (amount == null || amount <= 0) {
             throw new BadRequestException(ErrorStatus.INVALID_QUANTITY);
         }
         if (this.quantity == null) {
-            this.quantity = 0L;
+            this.quantity = 0.0;
         }
-        long newQty = this.quantity - amount;
+        double newQty = this.quantity - amount;
         if (newQty < 0) {
             throw new BadRequestException(ErrorStatus.INSUFFICIENT_MATERIAL_QUANTITY);
         }

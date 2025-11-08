@@ -119,7 +119,7 @@ public class PartOrderService {
             List<BomMaterialProjection> materials = bomMaterialProjectionRepository.findByBomId(bomProjection.getBomId());
             for (BomMaterialProjection bomMaterial : materials) {
                 Long materialId = bomMaterial.getMaterialId();
-                Long requiredQuantity = (long) bomMaterial.getQuantity() * item.getQuantity();
+                Long requiredQuantity = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 Long으로 변환
                 materialQuantities.merge(materialId, requiredQuantity, Long::sum);
             }
         }
@@ -136,7 +136,7 @@ public class PartOrderService {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
                     .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElse(null);
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
                 if (factoryMaterial == null || factoryMaterial.getQuantity() < required) {
                     return true; // 자재 부족
                 }
@@ -261,16 +261,20 @@ public class PartOrderService {
             PartProjection part = partProjectionRepository.findByPartId(item.getPartId())
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_NOT_FOUND));
             int partLeadTime = part.getLeadTime() != null ? part.getLeadTime() : 3;
-            int quantityFactor = (int) Math.ceil(item.getQuantity() / 100.0);
-            int totalPartLeadTime = partLeadTime + quantityFactor;
+
+            // standardQuantity를 기준으로 배수 계산
+            Integer standardQuantity = part.getStandardQuantity() != null ? part.getStandardQuantity() : 100;
+            int multiplier = (int) Math.ceil((double) item.getQuantity() / standardQuantity);
+            int totalPartLeadTime = partLeadTime * multiplier;
+
             maxLeadTime = Math.max(maxLeadTime, totalPartLeadTime);
-            log.info("부품 {} 리드타임: {}일, 수량: {}, 총 리드타임: {}일",
-                part.getName(), partLeadTime, item.getQuantity(), totalPartLeadTime);
+            log.info("부품 {} 리드타임: {}일, 수량: {}, 기준수량: {}, 배수: {}, 총 리드타임: {}일",
+                part.getName(), partLeadTime, item.getQuantity(), standardQuantity, multiplier, totalPartLeadTime);
         }
         return Math.max(maxLeadTime, 1);
     }
 
-    // 자재 가용성 확인 및 리드타임 계산 (projection 기반, 리드타임은 기본값 7일)
+    // 자재 가용성 확인 및 리드타임 계산 (projection 기반, standardQuantity 기준 배수로 리드타임 계산)
     private MaterialAvailabilityResult checkMaterialAvailabilityWithLeadTime(PartOrder partOrder) {
         boolean materialShortage = false;
         int maxMaterialLeadTime = 0;
@@ -284,21 +288,27 @@ public class PartOrderService {
                         .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                         .orElse(null);
 
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
 
                 if (factoryMaterial == null || factoryMaterial.getQuantity() < required) {
                     materialShortage = true;
-                    int materialLeadTime = materialProjectionRepository.findByMaterialId(bomMaterial.getMaterialId())
-                        .map(mp -> mp.getLeadTime())
-                        .orElse(7);
-                    maxMaterialLeadTime = Math.max(maxMaterialLeadTime, materialLeadTime);
-                    String materialName = materialProjectionRepository.findByMaterialId(bomMaterial.getMaterialId())
-                        .map(mp -> mp.getName())
-                        .orElse("UNKNOWN");
-                    log.info("자재 부족 - 자재ID: {}, 자재명: {}, 필요수량: {}, 재고수량: {}, 리드타임: {}일",
+                    var materialProjection = materialProjectionRepository.findByMaterialId(bomMaterial.getMaterialId());
+
+                    int baseMaterialLeadTime = materialProjection.map(mp -> mp.getLeadTime()).orElse(7);
+
+                    // standardQuantity를 기준으로 배수 계산
+                    Integer standardQuantity = materialProjection.map(mp -> mp.getStandardQuantity()).orElse(100);
+                    long shortageAmount = required - (factoryMaterial != null ? Math.round(factoryMaterial.getQuantity()) : 0);
+                    int multiplier = (int) Math.ceil((double) shortageAmount / standardQuantity);
+                    int totalMaterialLeadTime = baseMaterialLeadTime * multiplier;
+
+                    maxMaterialLeadTime = Math.max(maxMaterialLeadTime, totalMaterialLeadTime);
+                    String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
+
+                    log.info("자재 부족 - 자재ID: {}, 자재명: {}, 필요수량: {}, 재고수량: {}, 부족량: {}, 기본리드타임: {}일, 기준수량: {}, 배수: {}, 총 리드타임: {}일",
                         bomMaterial.getMaterialId(), materialName, required,
                         factoryMaterial != null ? factoryMaterial.getQuantity() : 0,
-                        materialLeadTime);
+                        shortageAmount, baseMaterialLeadTime, standardQuantity, multiplier, totalMaterialLeadTime);
                 }
             }
         }
@@ -777,7 +787,7 @@ public class PartOrderService {
                 FactoryMaterial factoryMaterial = factoryMaterialRepository
                     .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElseThrow(() -> new NotFoundException(ErrorStatus.MATERIAL_NOT_FOUND));
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
+                double required = bomMaterial.getQuantity() * item.getQuantity(); // Double 값 직접 사용
                 factoryMaterial.decreaseQuantity(required);
             }
         }
@@ -800,8 +810,8 @@ public class PartOrderService {
                     .findFirstByFactoryIdAndMaterialId(partOrder.getFactoryId(), bomMaterial.getMaterialId())
                     .orElse(null);
 
-                long required = (long) bomMaterial.getQuantity() * item.getQuantity();
-                long currentStock = factoryMaterial != null ? factoryMaterial.getQuantity() : 0;
+                long required = Math.round(bomMaterial.getQuantity() * item.getQuantity()); // Double에서 long으로 변환
+                long currentStock = factoryMaterial != null ? Math.round(factoryMaterial.getQuantity()) : 0; // Double을 long으로 변환
 
                 if (currentStock < required) {
                     long shortageAmount = required - currentStock;
@@ -836,12 +846,19 @@ public class PartOrderService {
                 Long unitPrice = materialProjection.map(mp -> mp.getStandardCost()).orElse(1000L);
                 Integer leadTimeDays = materialProjection.map(mp -> mp.getLeadTime()).orElse(7);
 
+                // standardQuantity를 고려한 주문 수량 계산
+                Integer standardQuantity = materialProjection.map(mp -> mp.getStandardQuantity()).orElse(1);
+                long actualOrderQuantity = calculateOrderQuantityWithStandardUnit(materialInfo.getShortageAmount(), standardQuantity);
+
+                log.info("자재 주문 수량 계산 - 자재코드: {}, 부족량: {}, 표준수량: {}, 실제주문량: {}",
+                    materialCode, materialInfo.getShortageAmount(), standardQuantity, actualOrderQuantity);
+
                 List<PurchaseRequestDto.PurchaseItemDto> singleMaterialItem = List.of(
                     PurchaseRequestDto.PurchaseItemDto.builder()
                             .materialCode(materialCode)
                             .materialName(materialName)
                             .unit(unit)
-                            .quantity(materialInfo.getShortageAmount())
+                            .quantity(actualOrderQuantity)  // 계산된 배수 수량으로 변경
                             .unitPrice(unitPrice)
                             .leadTimeDays(leadTimeDays)
                             .build()
@@ -857,9 +874,9 @@ public class PartOrderService {
 
                 purchaseRequestService.sendPurchaseRequest(purchaseRequest);
                 
-                log.info("자재 개별 구매요청 성공 - 주문 ID: {}, 자재코드: {}, 자재명: {}, 부족수량: {}", 
-                    partOrder.getId(), materialCode, materialName, materialInfo.getShortageAmount());
-                
+                log.info("자재 개별 구매요청 성공 - 주문 ID: {}, 자재코드: {}, 자재명: {}, 부족수량: {}, 주문수량: {}",
+                    partOrder.getId(), materialCode, materialName, materialInfo.getShortageAmount(), actualOrderQuantity);
+
                 successCount++;
                 
             } catch (Exception e) {
@@ -892,23 +909,20 @@ public class PartOrderService {
         }
     }
 
-    // 자재 구매 정보를 담는 내부 클래스
-    private static class MaterialPurchaseInfo {
-        private final Long materialId;
-        private final Long shortageAmount;
-
-        public MaterialPurchaseInfo(Long materialId, Long shortageAmount) {
-            this.materialId = materialId;
-            this.shortageAmount = shortageAmount;
+    // 표준 수량 단위로 배수 계산하는 메서드 추가
+    private long calculateOrderQuantityWithStandardUnit(long shortageAmount, Integer standardQuantity) {
+        if (standardQuantity == null || standardQuantity <= 0) {
+            return shortageAmount; // 표준수량이 없으면 부족량 그대로 반환
         }
 
-        public Long getMaterialId() {
-            return materialId;
-        }
+        // 부족량을 표준수량으로 나눈 후 올림하여 배수로 계산
+        long multiplier = (long) Math.ceil((double) shortageAmount / standardQuantity);
+        long orderQuantity = multiplier * standardQuantity;
 
-        public Long getShortageAmount() {
-            return shortageAmount;
-        }
+        log.debug("배수 계산 - 부족량: {}, 표준수량: {}, 배수: {}, 주문량: {}",
+            shortageAmount, standardQuantity, multiplier, orderQuantity);
+
+        return orderQuantity;
     }
 
     // 부품 주문 생성 (아이템별 단건 주문 생성)
@@ -1140,5 +1154,24 @@ public class PartOrderService {
 
         log.info("일괄 MRP 결과 적용 완료 - 공장 ID: {}, 성공: {}, 실패: {}", factoryId, successCount, failCount);
         return results;
+    }
+
+    // 자재 구매 정보를 담는 내부 클래스
+    private static class MaterialPurchaseInfo {
+        private final Long materialId;
+        private final Long shortageAmount;
+
+        public MaterialPurchaseInfo(Long materialId, Long shortageAmount) {
+            this.materialId = materialId;
+            this.shortageAmount = shortageAmount;
+        }
+
+        public Long getMaterialId() {
+            return materialId;
+        }
+
+        public Long getShortageAmount() {
+            return shortageAmount;
+        }
     }
 }

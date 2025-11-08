@@ -102,7 +102,7 @@ public class BranchProjectionService {
                 .map(material -> FactoryMaterial.builder()
                         .factoryId(factoryId)
                         .materialId(material.getMaterialId())
-                        .quantity(0L)
+                        .quantity(0.0)
                         .build())
                 .toList();
 

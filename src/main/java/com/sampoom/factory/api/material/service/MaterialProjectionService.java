@@ -62,12 +62,16 @@ public class MaterialProjectionService {
                 .code(eventDto.getPayload().getMaterialCode())
                 .name(eventDto.getPayload().getName())
                 .baseQuantity(eventDto.getPayload().getBaseQuantity())
+                .standardQuantity(eventDto.getPayload().getStandardQuantity())     // 새로 추가된 필드
                 .categoryId(eventDto.getPayload().getMaterialCategoryId())
                 .standardCost(eventDto.getPayload().getStandardCost())
+                .standardTotalCost(eventDto.getPayload().getStandardTotalCost())   // 새로 추가된 필드
                 .materialUnit(eventDto.getPayload().getMaterialUnit())
                 .leadTime(eventDto.getPayload().getLeadTime())
                 .version(eventDto.getVersion())
                 .lastEventId(eventDto.getEventId())
+                .updatedAt(OffsetDateTime.now())          // 누락된 필드 추가
+                .sourceUpdatedAt(eventDto.getOccurredAt()) // 소스 업데이트 시간 추가
                 .deleted(false)
                 .build();
 
@@ -98,7 +102,7 @@ public class MaterialProjectionService {
                 .map(factory -> FactoryMaterial.builder()
                         .factoryId(factory.getBranchId())
                         .materialId(materialId)
-                        .quantity(0L)
+                        .quantity(0.0)
                         .build())
                 .toList();
 
@@ -125,8 +129,10 @@ public class MaterialProjectionService {
                 payload.getName(),
                 payload.getMaterialUnit(),
                 payload.getBaseQuantity(),
+                payload.getStandardQuantity(),        // 새로 추가된 필드
                 payload.getLeadTime(),
                 payload.getStandardCost(),
+                payload.getStandardTotalCost(),       // 새로 추가된 필드
                 payload.getDeleted(),
                 payload.getMaterialCategoryId(),
                 eventDto.getEventId(),
@@ -155,8 +161,10 @@ public class MaterialProjectionService {
                 currentMaterial.getName(),
                 currentMaterial.getMaterialUnit(),
                 currentMaterial.getBaseQuantity(),
+                currentMaterial.getStandardQuantity(),     // 새로 추가된 필드
                 currentMaterial.getLeadTime(),
                 currentMaterial.getStandardCost(),
+                currentMaterial.getStandardTotalCost(),   // 새로 추가된 필드
                 true, // deleted = true
                 currentMaterial.getCategoryId(),
                 eventDto.getEventId(),

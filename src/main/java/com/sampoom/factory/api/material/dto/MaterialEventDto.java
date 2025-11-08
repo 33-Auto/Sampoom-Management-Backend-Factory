@@ -25,9 +25,11 @@ public class MaterialEventDto {
         private String name;
         private String materialUnit;
         private Integer baseQuantity;
+        private Integer standardQuantity;     // 새로 추가된 필드
         private Integer leadTime;
         private Boolean deleted;
         private Long materialCategoryId;
         private Long standardCost;
+        private Long standardTotalCost;      // 새로 추가된 필드
     }
 }
