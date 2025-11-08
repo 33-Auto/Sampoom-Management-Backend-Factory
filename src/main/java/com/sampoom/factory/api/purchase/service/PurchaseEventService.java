@@ -96,7 +96,7 @@ public class PurchaseEventService {
             factoryMaterial = FactoryMaterial.builder()
                     .factoryId(factoryId)
                     .materialId(materialId)
-                    .quantity(material.getQuantity())
+                    .quantity(material.getQuantity().doubleValue())  // Long을 Double로 변환
                     .build();
 
             factoryMaterialRepository.save(factoryMaterial);
@@ -104,8 +104,8 @@ public class PurchaseEventService {
                     factoryId, materialId, material.getMaterialCode(), material.getQuantity());
         } else {
             // 기존 재고에 수량 추가
-            Long previousQuantity = factoryMaterial.getQuantity();
-            factoryMaterial.increaseQuantity(material.getQuantity());
+            Double previousQuantity = factoryMaterial.getQuantity();
+            factoryMaterial.increaseQuantity(material.getQuantity().doubleValue());  // Long을 Double로 변환
             log.info("기존 자재 재고 증가 - 공장ID: {}, 자재ID: {}, 자재코드: {}, 이전수량: {}, 입고수량: {}, 현재수량: {}",
                     factoryId, materialId, material.getMaterialCode(),
                     previousQuantity, material.getQuantity(), factoryMaterial.getQuantity());

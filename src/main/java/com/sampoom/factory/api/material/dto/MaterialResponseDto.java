@@ -17,7 +17,7 @@ public class MaterialResponseDto {
     private String materialCode;
     private Long materialCategoryId;
     private String materialCategoryName;
-    private Long quantity;
+    private Double quantity;
 
     public static MaterialResponseDto from(MaterialProjection material) {
         return MaterialResponseDto.builder()
@@ -30,7 +30,7 @@ public class MaterialResponseDto {
                 .build();
     }
 
-    public MaterialResponseDto withQuantity(Long quantity) {
+    public MaterialResponseDto withQuantity(Double quantity) {
         this.quantity = quantity;
         return this;
     }
