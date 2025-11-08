@@ -24,5 +24,6 @@ public class PurchaseRequestDto {
         private Long quantity;
         private Long unitPrice;
         private Integer leadTimeDays;
+        private Integer standardQuantity;    // 새로 추가된 필드
     }
 }

@@ -861,6 +861,7 @@ public class PartOrderService {
                             .quantity(actualOrderQuantity)  // 계산된 배수 수량으로 변경
                             .unitPrice(unitPrice)
                             .leadTimeDays(leadTimeDays)
+                            .standardQuantity(standardQuantity)  // standardQuantity 추가
                             .build()
                 );
 
