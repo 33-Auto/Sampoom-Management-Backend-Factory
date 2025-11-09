@@ -91,7 +91,7 @@ public class PartOrderController {
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 
-    @Operation(summary = "생산계획 목록 조회", description = "생산계획 탭용 조회 - 계획 상태와 최근 IN_PROGRESS로 전환된 데이터를 포함하여 조회합니다.")
+    @Operation(summary = "생산계획 목록 조회", description = "생산계획 탭용 조회 - 계획 상태와 최근 IN_PROGRESS로 전환된 데이터를 포함하여 조회합니다. includeRecentDays=-1로 전체 데이터 조회 가능합니다.")
     @GetMapping("/orders/production-plans")
     public ResponseEntity<ApiResponse<PageResponseDto<PartOrderResponseDto>>> getProductionPlans(
             @PathVariable Long factoryId,
