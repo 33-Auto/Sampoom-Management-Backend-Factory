@@ -21,6 +21,7 @@ public class PartOrderResponseDto {
     // 날짜 관련 필드들
     private LocalDateTime requiredDate; // 고객이 요청한 필요일
     private LocalDateTime scheduledDate; // 예정일
+    private LocalDateTime minimumStartDate; // 요구일에 맞추기 위한 최소 시작일
     private Double progressRate; // 진행률 (0.0 ~ 1.0)
     private String rejectionReason; // 반려 사유
     private Integer dDay; // D-day

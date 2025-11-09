@@ -95,6 +95,7 @@ public class PartOrderController {
     @GetMapping("/orders/production-plans")
     public ResponseEntity<ApiResponse<PageResponseDto<PartOrderResponseDto>>> getProductionPlans(
             @PathVariable Long factoryId,
+            @RequestParam(required = false) List<PartOrderStatus> statuses,
             @RequestParam(required = false) List<PartOrderPriority> priorities,
             @RequestParam(required = false) String query,
             @RequestParam(required = false) Long categoryId,
@@ -103,7 +104,7 @@ public class PartOrderController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "7") int includeRecentDays
     ) {
-        PageResponseDto<PartOrderResponseDto> response = partOrderService.getProductionPlans(factoryId, priorities, query, categoryId, groupId, page, size, includeRecentDays);
+        PageResponseDto<PartOrderResponseDto> response = partOrderService.getProductionPlans(factoryId, statuses, priorities, query, categoryId, groupId, page, size, includeRecentDays);
         return ApiResponse.success(SuccessStatus.OK, response);
     }
 
