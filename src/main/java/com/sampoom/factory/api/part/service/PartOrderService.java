@@ -580,8 +580,10 @@ public class PartOrderService {
             PartOrderStatus.DELAYED
         );
 
-        // 최근 IN_PROGRESS로 전환된 데이터를 포함하기 위한 기준일 계산
-        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(includeRecentDays);
+        // includeRecentDays가 -1이면 모든 IN_PROGRESS 데이터 포함, 아니면 최근 며칠간만
+        LocalDateTime cutoffDate = includeRecentDays == -1 ?
+            LocalDateTime.of(1900, 1, 1, 0, 0) :  // 아주 오래된 날짜로 설정하여 모든 데이터 포함
+            LocalDateTime.now().minusDays(includeRecentDays);
 
         Page<PartOrder> partOrderPage;
 
@@ -640,7 +642,7 @@ public class PartOrderService {
                 .externalPartOrderId(partOrder.getExternalPartOrderId())
                 .requiredDate(partOrder.getRequiredDate())
                 .scheduledDate(partOrder.getScheduledDate())
-                .progressRate(partOrder.getProgressRate())
+                .progressRate(Math.round(partOrder.getProgressRate() * 100.0) / 100.0)
                 .rejectionReason(partOrder.getRejectionReason())
                 .dDay(partOrder.getDDay())
                 .priority(partOrder.getPriority() != null ? partOrder.getPriority().name() : null)
@@ -687,7 +689,7 @@ public class PartOrderService {
                  .externalPartOrderId(partOrder.getExternalPartOrderId())
                 .requiredDate(partOrder.getRequiredDate())
                 .scheduledDate(partOrder.getScheduledDate())
-                .progressRate(partOrder.getProgressRate())
+                .progressRate(Math.round(partOrder.getProgressRate() * 100.0) / 100.0)
                 .rejectionReason(partOrder.getRejectionReason())
                 .dDay(partOrder.getDDay())
                 .priority(partOrder.getPriority() != null ? partOrder.getPriority().name() : null)

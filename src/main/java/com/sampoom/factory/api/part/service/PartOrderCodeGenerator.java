@@ -17,23 +17,23 @@ public class PartOrderCodeGenerator {
     private final PartOrderRepository partOrderRepository;
 
     /**
-     * WO-2025-001 형태의 주문 코드를 생성합니다.
+     * WO-251109-001 형태의 주문 코드를 생성합니다.
      * WO: Work Order의 약자
-     * 2025: 현재 년도
-     * 001: 해당 년도의 순차 번호 (3자리)
+     * 251109: YYMMDD 형태 (25년 11월 09일)
+     * 001: 해당 날짜의 순차 번호 (3자리)
      */
     public String generateOrderCode() {
         LocalDateTime now = LocalDateTime.now();
-        String year = now.format(DateTimeFormatter.ofPattern("yyyy"));
+        String dateCode = now.format(DateTimeFormatter.ofPattern("yyMMdd"));
 
-        // 해당 년도의 마지막 주문 코드 조회
-        String lastOrderCode = partOrderRepository.findTopByOrderCodeStartingWithOrderByOrderCodeDesc("WO-" + year + "-")
+        // 해당 날짜의 마지막 주문 코드 조회
+        String lastOrderCode = partOrderRepository.findTopByOrderCodeStartingWithOrderByOrderCodeDesc("WO-" + dateCode + "-")
                 .map(PartOrder::getOrderCode)
                 .orElse(null);
 
         int nextSequence = 1;
         if (lastOrderCode != null && !lastOrderCode.isEmpty()) {
-            // WO-2025-001에서 마지막 3자리 숫자 추출
+            // WO-251109-001에서 마지막 3자리 숫자 추출
             String[] parts = lastOrderCode.split("-");
             if (parts.length == 3) {
                 try {
@@ -45,8 +45,8 @@ public class PartOrderCodeGenerator {
             }
         }
 
-        // WO-2025-001 형태로 생성
-        String orderCode = String.format("WO-%s-%03d", year, nextSequence);
+        // WO-251109-001 형태로 생성
+        String orderCode = String.format("WO-%s-%03d", dateCode, nextSequence);
 
         log.info("주문 코드 생성: {}", orderCode);
         return orderCode;
