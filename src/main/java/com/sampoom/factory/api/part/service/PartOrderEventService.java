@@ -89,7 +89,7 @@ public class PartOrderEventService {
                     version,
                     OffsetDateTime.now().toString(),
                     new PartOrderEvent.Payload(
-                            partOrder.getId(),                    // partOrderId
+                            externalPartOrderId,
                             partOrder.getOrderCode(),             // orderCode
                             partOrder.getFactoryId(),             // factoryId
                             factory.getBranchName(),              // factoryName
@@ -101,15 +101,14 @@ public class PartOrderEventService {
                             partOrder.getProgressRate(),          // progressRate
                             partOrder.getPriority() != null ? partOrder.getPriority().name() : null, // priority
                             partOrder.getMaterialAvailability() != null ? partOrder.getMaterialAvailability().name() : null, // materialAvailability
-                            externalPartOrderId,                  // externalPartOrderId - 올바른 위치
                             itemPayloads,                         // items
                             deleted                               // deleted
                     )
             );
 
-            // 디버깅: 최종 이벤트 페이로드의 externalPartOrderId 확인
-            log.info("디버깅 - 최종 이벤트 페이로드 externalPartOrderId: {}",
-                    evt.payload().externalPartOrderId());
+            // 디버깅: 최종 이벤트 페이로드의 partOrderId 확인
+            log.info("디버깅 - 최종 이벤트 페이로드 partOrderId: {}",
+                    evt.payload().partOrderId());
 
             JsonNode payload = objectMapper.valueToTree(evt);
             outboxRepository.save(
