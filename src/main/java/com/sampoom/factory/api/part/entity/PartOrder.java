@@ -53,6 +53,9 @@ public class PartOrder extends BaseTimeEntity {
     @Column(name = "scheduled_date")
     private LocalDateTime scheduledDate; // MRP 실행 후 계산된 예정일
 
+    @Column(name = "minimum_start_date")
+    private LocalDateTime minimumStartDate; // 요구일에 맞추기 위한 최소 시작일
+
     @Column(name = "progress_rate")
     @Builder.Default
     private Double progressRate = 0.0; // 진행률 (0.0 ~ 1.0)
@@ -86,6 +89,10 @@ public class PartOrder extends BaseTimeEntity {
     public void updateScheduledDate(LocalDateTime scheduledDate) {
         this.scheduledDate = scheduledDate;
         updateDDay();
+    }
+
+    public void updateMinimumStartDate(LocalDateTime minimumStartDate) {
+        this.minimumStartDate = minimumStartDate;
     }
 
     public void updateProgressRate(Double progressRate) {

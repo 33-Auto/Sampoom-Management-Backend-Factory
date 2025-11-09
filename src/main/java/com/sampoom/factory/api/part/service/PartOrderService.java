@@ -221,22 +221,36 @@ public class PartOrderService {
         LocalDateTime scheduledDate = LocalDateTime.now().plusDays(totalLeadTimeDays);
         partOrder.updateScheduledDate(scheduledDate);
 
+        // 요구일에 맞추기 위한 최소 시작일 계산 (역산)
+        LocalDateTime minimumStartDate = partOrder.getRequiredDate().minusDays(totalLeadTimeDays);
+        partOrder.updateMinimumStartDate(minimumStartDate);
+
+        log.info("MRP 계산 완료 - 주문 ID: {}, 총 리드타임: {}일, 예정일: {}, 최소 시작일: {}",
+            partOrder.getId(), totalLeadTimeDays, scheduledDate, minimumStartDate);
+
         // 자재가용성 설정
         partOrder.updateMaterialAvailability(
             materialResult.isMaterialShortage() ? MaterialAvailability.INSUFFICIENT : MaterialAvailability.SUFFICIENT
         );
 
-        // 예정일과 요청일 비교하여 상태 결정
-        if (partOrder.getScheduledDate().isAfter(partOrder.getRequiredDate())) {
-            // 예정일이 요청일보다 늦으면 지연 상태
-            partOrder.markAsDelayed();
-            log.info("예정일이 요청일을 초과하여 지연 상태로 설정 - 주문 ID: {}, 요청일: {}, 예정일: {}",
-                partOrder.getId(), partOrder.getRequiredDate(), partOrder.getScheduledDate());
+        // 최소 시작일이 현재 날짜보다 이전인지 확인하여 상태 결정
+        LocalDateTime now = LocalDateTime.now();
+        if (minimumStartDate.isBefore(now)) {
+            // 최소 시작일이 이미 지났으면, 예정일과 요청일 비교하여 상태 결정
+            if (partOrder.getScheduledDate().isAfter(partOrder.getRequiredDate())) {
+                partOrder.markAsDelayed();
+                log.warn("지연 상태 - 주문 ID: {}, 요구일: {}, 예정일: {}, 최소 시작일(이미 경과): {}",
+                    partOrder.getId(), partOrder.getRequiredDate(), partOrder.getScheduledDate(), minimumStartDate);
+            } else {
+                partOrder.confirmPlan();
+                log.info("계획 확정 - 주문 ID: {}, 요구일: {}, 예정일: {}, 최소 시작일(이미 경과): {}",
+                    partOrder.getId(), partOrder.getRequiredDate(), partOrder.getScheduledDate(), minimumStartDate);
+            }
         } else {
-            // 예정일이 요청일보다 빠르거나 같으면 계획확정
+            // 최소 시작일이 아직 오지 않았으면 계획 확정
             partOrder.confirmPlan();
-            log.info("예정일이 요청일 이내로 계획확정 상태로 설정 - 주문 ID: {}, 요청일: {}, 예정일: {}",
-                partOrder.getId(), partOrder.getRequiredDate(), partOrder.getScheduledDate());
+            log.info("계획 확정 - 주문 ID: {}, 요구일: {}, 예정일: {}, 최소 시작일: {}",
+                partOrder.getId(), partOrder.getRequiredDate(), partOrder.getScheduledDate(), minimumStartDate);
         }
 
         if (materialResult.isMaterialShortage()) {
@@ -566,19 +580,21 @@ public class PartOrderService {
     }
 
     /**
-     * 생산계획 목록 조회 (계획 상태 + 최근 IN_PROGRESS로 전환된 데이터 포함) - 컨트롤러 시그니처와 정확히 맞춤
+     * 생산계획 목록 조회 (계획 상태 + 최근 IN_PROGRESS로 전환된 데이터 포함) - 상태 필터 추가
      */
-    public PageResponseDto<PartOrderResponseDto> getProductionPlans(Long factoryId, List<PartOrderPriority> priorities,
+    public PageResponseDto<PartOrderResponseDto> getProductionPlans(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities,
                                                                   String query, Long categoryId, Long groupId,
                                                                   int page, int size, int includeRecentDays) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
 
-        // 생산계획 상태: UNDER_REVIEW, PLAN_CONFIRMED, DELAYED
-        List<PartOrderStatus> planStatuses = Arrays.asList(
-            PartOrderStatus.UNDER_REVIEW,
-            PartOrderStatus.PLAN_CONFIRMED,
-            PartOrderStatus.DELAYED
-        );
+        // 상태가 지정되지 않은 경우 기본 생산계획 상태 사용
+        List<PartOrderStatus> planStatuses = (statuses != null && !statuses.isEmpty()) ?
+            statuses :
+            Arrays.asList(
+                PartOrderStatus.UNDER_REVIEW,
+                PartOrderStatus.PLAN_CONFIRMED,
+                PartOrderStatus.DELAYED
+            );
 
         // includeRecentDays가 -1이면 모든 IN_PROGRESS 데이터 포함, 아니면 최근 며칠간만
         LocalDateTime cutoffDate = includeRecentDays == -1 ?
@@ -642,6 +658,7 @@ public class PartOrderService {
                 .externalPartOrderId(partOrder.getExternalPartOrderId())
                 .requiredDate(partOrder.getRequiredDate())
                 .scheduledDate(partOrder.getScheduledDate())
+                .minimumStartDate(partOrder.getMinimumStartDate())
                 .progressRate(Math.round(partOrder.getProgressRate() * 100.0) / 100.0)
                 .rejectionReason(partOrder.getRejectionReason())
                 .dDay(partOrder.getDDay())
@@ -689,6 +706,7 @@ public class PartOrderService {
                  .externalPartOrderId(partOrder.getExternalPartOrderId())
                 .requiredDate(partOrder.getRequiredDate())
                 .scheduledDate(partOrder.getScheduledDate())
+                .minimumStartDate(partOrder.getMinimumStartDate())
                 .progressRate(Math.round(partOrder.getProgressRate() * 100.0) / 100.0)
                 .rejectionReason(partOrder.getRejectionReason())
                 .dDay(partOrder.getDDay())
