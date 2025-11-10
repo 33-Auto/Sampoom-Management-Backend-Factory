@@ -94,7 +94,7 @@ public class ProjectionEventHandler {
         handleEvent(message, "OrderToFactoryEvent", OrderToFactoryEventDto.class, orderToFactoryEventService::processOrderToFactoryEvent);
     }
 
-    @KafkaListener(topics = "part-forecast-events", groupId = "sampoom-factory-test5")
+    @KafkaListener(topics = "part-forecast-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handlePartForecastEvent(String message) {
         handleEvent(message, "PartForecastEvent", PartForecastEvent.class, mpsEventService::processPartForecastEvent);
     }

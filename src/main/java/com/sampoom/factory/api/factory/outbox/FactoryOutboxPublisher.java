@@ -42,12 +42,25 @@ public class FactoryOutboxPublisher {
                 Object evt;
                 String topic;
 
+                // MPS 이벤트 발행 상세 로깅 추가
+                if (o.getEventType().startsWith("Mps")) {
+                    log.info("MPS 이벤트 발행 시작 - OUTBOX ID: {}, EventType: {}, AggregateId: {}",
+                        o.getId(), o.getEventType(), o.getAggregateId());
+                }
+
                 // eventType에 따라 적절한 이벤트 타입과 토픽 결정
-                if (o.getEventType().startsWith("PartOrder")) {
+                // PartOrder 관련 이벤트 (일반 PartOrder + MPS)
+                if (o.getEventType().startsWith("PartOrder") || o.getEventType().startsWith("Mps")) {
                     PartOrderEvent partOrderEvent = objectMapper.treeToValue(o.getPayload(), PartOrderEvent.class);
                     String eventJson = objectMapper.writeValueAsString(partOrderEvent);
                     topic = TOPIC_PART_ORDER;
                     evt = eventJson;
+
+                    // MPS 이벤트인 경우 추가 로깅
+                    if (o.getEventType().startsWith("Mps")) {
+                        log.info("MPS 이벤트 JSON 변환 완료 - EventType: {}, Topic: {}, EventJson 길이: {}",
+                            o.getEventType(), topic, eventJson.length());
+                    }
                 } else {
                     FactoryEvent factoryEvent = objectMapper.treeToValue(o.getPayload(), FactoryEvent.class);
                     String eventJson = objectMapper.writeValueAsString(factoryEvent);
@@ -55,12 +68,30 @@ public class FactoryOutboxPublisher {
                     evt = eventJson;
                 }
 
+                // MPS 이벤트 Kafka 전송 로깅
+                if (o.getEventType().startsWith("Mps")) {
+                    log.info("MPS 이벤트 Kafka 전송 시작 - EventType: {}, Topic: {}, Key: {}",
+                        o.getEventType(), topic, String.valueOf(o.getAggregateId()));
+                }
+
                 kafkaTemplate.send(topic, String.valueOf(o.getAggregateId()), evt)
                                                      .get(5, TimeUnit.SECONDS);
 
                 o.markPublished();
 
+                // MPS 이벤트 발행 완료 로깅
+                if (o.getEventType().startsWith("Mps")) {
+                    log.info("MPS 이벤트 Kafka 전송 완료 - OUTBOX ID: {}, EventType: {}, 상태: published",
+                        o.getId(), o.getEventType());
+                }
+
             } catch (Exception e){
+                // MPS 이벤트 발행 실패 로깅
+                if (o.getEventType().startsWith("Mps")) {
+                    log.error("MPS 이벤트 Kafka 전송 실패 - OUTBOX ID: {}, EventType: {}, 오류: {}",
+                        o.getId(), o.getEventType(), e.getMessage(), e);
+                }
+
                 int nextRetry = o.getRetryCount() + 1;
 
 
