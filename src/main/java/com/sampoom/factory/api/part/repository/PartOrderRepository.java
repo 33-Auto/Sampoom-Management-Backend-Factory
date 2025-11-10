@@ -198,6 +198,13 @@ public interface PartOrderRepository extends JpaRepository<PartOrder, Long> {
         LocalDateTime endDate
     );
 
+    // MPS 주문 자동 처리를 위한 조회 메서드 (현재 시각 이하 모든 주문)
+    List<PartOrder> findByOrderTypeAndStatusInAndMinimumStartDateBefore(
+        PartOrderType orderType,
+        List<PartOrderStatus> statuses,
+        LocalDateTime cutoffDate
+    );
+
     @Query("SELECT DISTINCT po FROM PartOrder po JOIN po.items poi JOIN PartProjection pp ON poi.partId = pp.partId " +
            "WHERE po.factoryId = :factoryId " +
            "AND (:statuses IS NULL OR po.status IN :statuses OR (po.status = 'IN_PROGRESS' AND po.previousStatus IN :statuses)) " +

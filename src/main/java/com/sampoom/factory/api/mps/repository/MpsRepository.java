@@ -42,10 +42,6 @@ public interface MpsRepository extends JpaRepository<Mps, Long> {
     // 목표 날짜별 MPS 조회
     List<Mps> findByTargetDate(LocalDate targetDate);
 
-    // 부품별 최신 MPS 조회
-    @Query("SELECT m FROM Mps m WHERE m.partId = :partId ORDER BY m.createdAt DESC LIMIT 1")
-    Optional<Mps> findLatestByPartId(@Param("partId") Long partId);
-
     // 시작일이 특정 날짜 이전인 MPS 조회 (긴급 생산 필요)
     @Query("SELECT m FROM Mps m WHERE m.startDate <= :date AND m.status = :status")
     List<Mps> findUrgentMps(@Param("date") LocalDate date, @Param("status") MpsStatus status);

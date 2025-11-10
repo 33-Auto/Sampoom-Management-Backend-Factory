@@ -108,7 +108,7 @@ public class PartOrderService {
 
 
         // 주문 생성 시에는 MRP를 자동으로 실행하지 않음 (별도 API로 분리)
-        log.info("부품 주문 생성 완료 - 주문 ID: {}, 상태: {}, 우선순위: {}, 자재가용���: {}, 외부주문ID: {}",
+        log.info("부품 주문 생성 완료 - 주문 ID: {}, 상태: {}, 우선순위: {}, 자재가용성: {}, 외부주문ID: {}",
             partOrder.getId(), partOrder.getStatus(), partOrder.getPriority(), partOrder.getMaterialAvailability(), request.getExternalPartOrderId());
 
         return toResponseDto(partOrder);
@@ -335,7 +335,7 @@ public class PartOrderService {
                     maxMaterialLeadTime = Math.max(maxMaterialLeadTime, totalMaterialLeadTime);
                     String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
 
-                    log.info("자재 부족 - 자재ID: {}, 자재명: {}, 필요수량: {}, 재고수량: {}, 부족량: {}, 기본리드타임: {}일, 기준수량: {}, 배수: {}, 총 리드타임: {}일",
+                    log.info("자재 부족 - 자재ID: {}, 자재명: {}, 필요수량: {}, 재고수���: {}, 부족량: {}, 기본리드타임: {}일, 기준수량: {}, 배수: {}, 총 리드타임: {}일",
                         bomMaterial.getMaterialId(), materialName, required,
                         factoryMaterial != null ? factoryMaterial.getQuantity() : 0,
                         shortageAmount, baseMaterialLeadTime, standardQuantity, multiplier, totalMaterialLeadTime);
@@ -421,6 +421,7 @@ public class PartOrderService {
     }
 
     // 주문 목록 조회
+    @Transactional
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, PartOrderStatus status, int page, int size) {
         factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
@@ -436,8 +437,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
-                    // 각 주문의 진행률 업데이트
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());
@@ -450,6 +457,7 @@ public class PartOrderService {
     }
 
     // 주문 목록 조회 - 여러 상태 필터링 지원
+    @Transactional
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, int page, int size) {
         factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
@@ -465,8 +473,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
-                    // 각 주문의 진행률 업데이트
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());
@@ -549,8 +563,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
-                    // 각 주문의 진행률 업데이트
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());
@@ -563,6 +583,7 @@ public class PartOrderService {
     }
 
     // 주문 목록 조회 - 카테고리, 그룹 필터링 추가 (컨트롤러 시그니처와 정확히 맞춤)
+    @Transactional
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities,
                                                               String query, Long categoryId, Long groupId, int page, int size) {
         factoryProjectionRepository.findById(factoryId)
@@ -583,7 +604,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());

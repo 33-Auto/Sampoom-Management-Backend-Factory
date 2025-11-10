@@ -66,7 +66,7 @@ public class MpsEventService {
         int requiredQuantity = mps.getForecastQuantity() + mps.getSafetyStock() - mps.getExpectedInventory();
         int productionCycles = requiredQuantity > 0 ?
             (int) Math.ceil((double) requiredQuantity / mps.getStandardQuantity()) : 0;
-        int totalProduction = requiredQuantity > 0 ? mps.getForecastQuantity() : 0;
+        int totalProduction = Math.max(requiredQuantity, 0);
         int requiredDays = productionCycles * mps.getLeadTime();
         LocalDate startDate = mps.getTargetDate().minusDays(requiredDays + mps.getBufferDays());
 

@@ -101,15 +101,12 @@ public class MpsTestService {
     @Transactional(readOnly = true)
     public List<MpsOrderInfoDto> findMpsOrdersReadyForAutoProcessing() {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfHour = now.withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime endOfHour = startOfHour.plusHours(1).minusNanos(1);
         List<PartOrderStatus> targetStatuses = List.of(PartOrderStatus.PLAN_CONFIRMED, PartOrderStatus.DELAYED);
 
-        List<PartOrder> partOrders = partOrderRepository.findByOrderTypeAndStatusInAndMinimumStartDateBetween(
+        List<PartOrder> partOrders = partOrderRepository.findByOrderTypeAndStatusInAndMinimumStartDateBefore(
                 PartOrderType.MPS,
                 targetStatuses,
-                startOfHour,
-                endOfHour
+                now
         );
 
         return partOrders.stream()

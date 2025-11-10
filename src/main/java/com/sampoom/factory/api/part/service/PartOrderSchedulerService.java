@@ -178,17 +178,14 @@ public class PartOrderSchedulerService {
         log.info("MPS 주문 자동 MRP 결과 적용 처리 시작");
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfHour = now.withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime endOfHour = startOfHour.plusHours(1).minusNanos(1);
 
-        // MPS 타입이면서 계획확정 또는 지연 상태이고, 최소 시작일이 현재 시간 범위에 있는 주문들 조회
+        // MPS 타입이면서 계획확정 또는 지연 상태이고, 최소 시작일이 현재 시각 이하인 모든 주문들 조회
         List<PartOrderStatus> targetStatuses = List.of(PartOrderStatus.PLAN_CONFIRMED, PartOrderStatus.DELAYED);
         List<PartOrder> mpsOrdersToStart = partOrderRepository
-                .findByOrderTypeAndStatusInAndMinimumStartDateBetween(
+                .findByOrderTypeAndStatusInAndMinimumStartDateBefore(
                         PartOrderType.MPS,
                         targetStatuses,
-                        startOfHour,
-                        endOfHour
+                        now
                 );
 
         int successCount = 0;
