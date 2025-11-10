@@ -40,6 +40,8 @@ public class PartOrderResponseDto {
         private String partCode;
         private String partGroup;
         private String partCategory;
+        private String partGroupName;    // 그룹 이름 추가
+        private String partCategoryName; // 카테고리 이름 추가
         private Long quantity;
     }
 }

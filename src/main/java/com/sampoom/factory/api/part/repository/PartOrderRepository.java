@@ -180,4 +180,32 @@ public interface PartOrderRepository extends JpaRepository<PartOrder, Long> {
     List<PartOrder> findByStatus(PartOrderStatus status);
 
     List<PartOrder> findByStatusAndScheduledDateBefore(PartOrderStatus status, LocalDateTime scheduledDate);
+
+    @Query("SELECT DISTINCT po FROM PartOrder po JOIN po.items poi JOIN PartProjection pp ON poi.partId = pp.partId " +
+           "WHERE po.factoryId = :factoryId " +
+           "AND (:statuses IS NULL OR po.status IN :statuses OR (po.status = 'IN_PROGRESS' AND po.previousStatus IN :statuses)) " +
+           "AND (:priorities IS NULL OR po.priority IN :priorities) " +
+           "AND (:categoryId IS NULL OR pp.categoryId = :categoryId) " +
+           "AND (:groupId IS NULL OR pp.groupId = :groupId)")
+    Page<PartOrder> findByFactoryIdWithFiltersIncludingPreviousStatus(@Param("factoryId") Long factoryId,
+                                                                     @Param("statuses") List<PartOrderStatus> statuses,
+                                                                     @Param("priorities") List<PartOrderPriority> priorities,
+                                                                     @Param("categoryId") Long categoryId,
+                                                                     @Param("groupId") Long groupId,
+                                                                     Pageable pageable);
+
+    @Query("SELECT DISTINCT po FROM PartOrder po JOIN po.items poi JOIN PartProjection pp ON poi.partId = pp.partId " +
+           "WHERE po.factoryId = :factoryId " +
+           "AND (:statuses IS NULL OR po.status IN :statuses OR (po.status = 'IN_PROGRESS' AND po.previousStatus IN :statuses)) " +
+           "AND (:priorities IS NULL OR po.priority IN :priorities) " +
+           "AND (:categoryId IS NULL OR pp.categoryId = :categoryId) " +
+           "AND (:groupId IS NULL OR pp.groupId = :groupId) " +
+           "AND (pp.name LIKE :query OR pp.code LIKE :query OR po.orderCode LIKE :query)")
+    Page<PartOrder> findByFactoryIdWithFiltersAndSearchIncludingPreviousStatus(@Param("factoryId") Long factoryId,
+                                                                              @Param("statuses") List<PartOrderStatus> statuses,
+                                                                              @Param("priorities") List<PartOrderPriority> priorities,
+                                                                              @Param("categoryId") Long categoryId,
+                                                                              @Param("groupId") Long groupId,
+                                                                              @Param("query") String query,
+                                                                              Pageable pageable);
 }
