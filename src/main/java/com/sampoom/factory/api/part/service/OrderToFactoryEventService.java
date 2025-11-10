@@ -42,8 +42,8 @@ public class OrderToFactoryEventService {
         // OrderToFactoryEventDto를 PartOrderRequestDto로 변환
         List<PartOrderRequestDto.PartOrderItemRequestDto> items = event.getItems().stream()
                 .map(item -> PartOrderRequestDto.PartOrderItemRequestDto.builder()
-                        .materialId(item.getId())
-                        .requestQuantity(item.getDelta())
+                        .partId(item.getId()) // materialId → partId로 변경
+                        .quantity(item.getDelta().longValue()) // requestQuantity → quantity로 변경 (Integer → Long 변환)
                         .build())
                 .collect(Collectors.toList());
 

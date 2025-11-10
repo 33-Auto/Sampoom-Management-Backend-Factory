@@ -26,7 +26,5 @@ public class PartOrderRequestDto {
     public static class PartOrderItemRequestDto {
         private Long partId;
         private Long quantity;
-        private Long materialId; // 이벤트에서 사용하는 material ID
-        private Integer requestQuantity; // 이벤트에서 사용하는 요청 수량
     }
 }

@@ -49,6 +49,14 @@ public class PartOrder extends BaseTimeEntity {
     @Column(name = "external_part_order_id")
     private Long externalPartOrderId; // 외부 시스템의 주문 ID
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false)
+    @Builder.Default
+    private PartOrderType orderType = PartOrderType.GENERAL; // 주문 타입 (일반주문/MPS주문)
+
+    @Column(name = "mps_plan_id")
+    private Long mpsPlanId; // MPS 주문인 경우 연결된 MpsPlan ID
+
     // 새로 추가된 필드들
     @Column(name = "scheduled_date")
     private LocalDateTime scheduledDate; // MRP 실행 후 계산된 예정일

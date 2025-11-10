@@ -3,6 +3,7 @@ package com.sampoom.factory.api.part.repository;
 import com.sampoom.factory.api.part.entity.PartOrder;
 import com.sampoom.factory.api.part.entity.PartOrderPriority;
 import com.sampoom.factory.api.part.entity.PartOrderStatus;
+import com.sampoom.factory.api.part.entity.PartOrderType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -180,6 +181,22 @@ public interface PartOrderRepository extends JpaRepository<PartOrder, Long> {
     List<PartOrder> findByStatus(PartOrderStatus status);
 
     List<PartOrder> findByStatusAndScheduledDateBefore(PartOrderStatus status, LocalDateTime scheduledDate);
+
+    // MPS 주문 자동 처리를 위한 조회 메서드
+    List<PartOrder> findByOrderTypeAndStatusAndMinimumStartDateBetween(
+        PartOrderType orderType,
+        PartOrderStatus status,
+        LocalDateTime startDate,
+        LocalDateTime endDate
+    );
+
+    // MPS 주문 자동 처리를 위한 조회 메서드 (여러 상태 지원)
+    List<PartOrder> findByOrderTypeAndStatusInAndMinimumStartDateBetween(
+        PartOrderType orderType,
+        List<PartOrderStatus> statuses,
+        LocalDateTime startDate,
+        LocalDateTime endDate
+    );
 
     @Query("SELECT DISTINCT po FROM PartOrder po JOIN po.items poi JOIN PartProjection pp ON poi.partId = pp.partId " +
            "WHERE po.factoryId = :factoryId " +

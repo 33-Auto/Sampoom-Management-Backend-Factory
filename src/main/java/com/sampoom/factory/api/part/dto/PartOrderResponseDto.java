@@ -29,6 +29,7 @@ public class PartOrderResponseDto {
     // 새로 추가된 필드들
     private String priority; // 우선순위 (HIGH, MEDIUM, LOW)
     private String materialAvailability; // 자재가용성 (SUFFICIENT, INSUFFICIENT)
+    private String orderType; // 주문 유형 (GENERAL, MPS)
 
     private List<PartOrderItemDto> items;
 
