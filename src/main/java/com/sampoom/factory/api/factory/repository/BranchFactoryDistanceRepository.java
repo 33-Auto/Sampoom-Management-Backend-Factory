@@ -18,8 +18,11 @@ public interface BranchFactoryDistanceRepository extends JpaRepository<BranchFac
 
     Optional<BranchFactoryDistance> findByBranchNameAndFactoryId(String branchName, Long factoryId);
 
-    // 창고 ID 기반 조회 메서드 추가
+    // 창고 ID 기반 조회 메서드
     List<BranchFactoryDistance> findByBranchId(Long branchId);
+
+    // 창고 ID 기반으로 거리순 정렬 조회 (가장 가까운 공장부터)
+    List<BranchFactoryDistance> findByBranchIdOrderByDistanceKmAsc(Long branchId);
 
     Optional<BranchFactoryDistance> findByBranchIdAndFactoryId(Long branchId, Long factoryId);
 }

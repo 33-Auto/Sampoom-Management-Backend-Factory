@@ -10,6 +10,7 @@ import com.sampoom.factory.api.part.entity.MaterialAvailability;
 import com.sampoom.factory.api.part.entity.PartOrder;
 import com.sampoom.factory.api.part.entity.PartOrderItem;
 import com.sampoom.factory.api.part.entity.PartOrderStatus;
+import com.sampoom.factory.api.part.entity.PartOrderType;
 import com.sampoom.factory.api.part.repository.PartOrderRepository;
 import com.sampoom.factory.common.exception.NotFoundException;
 import com.sampoom.factory.common.response.ErrorStatus;
@@ -32,6 +33,7 @@ public class PartOrderSchedulerService {
     private final BomMaterialProjectionRepository bomMaterialProjectionRepository;
     private final FactoryMaterialRepository factoryMaterialRepository;
     private final PartOrderEventService partOrderEventService; // 이벤트 서비스 추가
+    private final PartOrderService partOrderService; // MRP 결과 적용을 위한 서비스 추가
 
     /**
      * 매시간 예정일이 지난 진행중인 주문들을 자동으로 완료 처리
@@ -165,5 +167,53 @@ public class PartOrderSchedulerService {
         }
 
         log.info("지연된 주문 점검 완료 - 총 {}건", delayedOrders.size());
+    }
+
+    /**
+     * 매시간 정각에 MPS 타입 주문의 시작일 확인 및 자동 MRP 결과 적용
+     */
+    @Scheduled(cron = "0 0 * * * *") // 매시간 정각에 실행
+    @Transactional
+    public void autoApplyMrpForMpsOrders() {
+        log.info("MPS 주문 자동 MRP 결과 적용 처리 시작");
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // MPS 타입이면서 계획확정 또는 지연 상태이고, 최소 시작일이 현재 시각 이하인 모든 주문들 조회
+        List<PartOrderStatus> targetStatuses = List.of(PartOrderStatus.PLAN_CONFIRMED, PartOrderStatus.DELAYED);
+        List<PartOrder> mpsOrdersToStart = partOrderRepository
+                .findByOrderTypeAndStatusInAndMinimumStartDateBefore(
+                        PartOrderType.MPS,
+                        targetStatuses,
+                        now
+                );
+
+        int successCount = 0;
+        int failCount = 0;
+
+        for (PartOrder order : mpsOrdersToStart) {
+            try {
+                log.info("MPS 주문 자동 MRP 결과 적용 시작 - 주문ID: {}, 주문코드: {}, 상태: {}, 최소시작일: {}",
+                        order.getId(), order.getOrderCode(), order.getStatus(), order.getMinimumStartDate());
+
+                // MRP 결과 적용 (구매요청 및 생산 시작)
+                partOrderService.applyMrpResultsAutomatically(order.getId());
+
+                successCount++;
+
+                log.info("MPS 주문 자동 MRP 결과 적용 완료 - 주문ID: {}, 주문코드: {}",
+                        order.getId(), order.getOrderCode());
+
+            } catch (Exception e) {
+                failCount++;
+                log.error("MPS 주문 자동 MRP 결과 적용 실패 - 주문ID: {}, 주문코드: {}, 오류: {}",
+                        order.getId(), order.getOrderCode(), e.getMessage());
+            }
+        }
+
+        if (successCount > 0 || failCount > 0) {
+            log.info("MPS 주문 자동 MRP 결과 적용 처리 완료 - 성공: {}건, 실패: {}건",
+                    successCount, failCount);
+        }
     }
 }

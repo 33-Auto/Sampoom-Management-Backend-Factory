@@ -43,6 +43,7 @@ public enum ErrorStatus {
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다.", 40405),
     PART_NOT_FOUND(HttpStatus.NOT_FOUND, "부품을 찾을 수 없습니다.", 40406),
     BOM_NOT_FOUND(HttpStatus.NOT_FOUND, "BOM을 찾을 수 없습니다.", 40407),
+    MPS_NOT_FOUND(HttpStatus.NOT_FOUND, "MPS를 찾을 수 없습니다.", 40408),
 
 
 

@@ -18,6 +18,8 @@ import com.sampoom.factory.api.factory.service.BranchProjectionService;
 import com.sampoom.factory.api.factory.dto.BranchEventDto;
 import com.sampoom.factory.api.purchase.dto.PurchaseEventDto;
 import com.sampoom.factory.api.purchase.service.PurchaseEventService;
+import com.sampoom.factory.api.mps.dto.PartForecastEvent;
+import com.sampoom.factory.api.mps.service.MpsEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -40,6 +42,7 @@ public class ProjectionEventHandler {
     private final BranchProjectionService branchProjectionService;
     private final PurchaseEventService purchaseEventService;
     private final OrderToFactoryEventService orderToFactoryEventService;
+    private final MpsEventService mpsEventService;
 
     @KafkaListener(topics = "part-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handlePartEvent(String message) {
@@ -89,6 +92,11 @@ public class ProjectionEventHandler {
     @KafkaListener(topics = "order-to-factory-events", groupId = "${spring.kafka.consumer.group-id}")
     public void handleOrderToFactoryEvent(String message) {
         handleEvent(message, "OrderToFactoryEvent", OrderToFactoryEventDto.class, orderToFactoryEventService::processOrderToFactoryEvent);
+    }
+
+    @KafkaListener(topics = "part-forecast-events", groupId = "sampoom-factory-test5")
+    public void handlePartForecastEvent(String message) {
+        handleEvent(message, "PartForecastEvent", PartForecastEvent.class, mpsEventService::processPartForecastEvent);
     }
 
     private <T> void handleEvent(String message, String eventName, Class<T> eventClass, java.util.function.Consumer<T> handler) {

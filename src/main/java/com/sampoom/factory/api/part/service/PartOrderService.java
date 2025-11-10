@@ -149,7 +149,7 @@ public class PartOrderService {
         return false; // 자재 충분
     }
 
-    // MRP 실행 API (별도 분리) - 동시성 제어 추가
+    // MRP 실행 API (별도 분리) - 동시성 제어 ��가
     @Transactional
     public PartOrderResponseDto executeMRP(Long factoryId, Long orderId) {
         // 비관적 락을 사용하여 동시성 제어
@@ -220,8 +220,20 @@ public class PartOrderService {
         // 자재 부족 여부 확인 및 자재 조달 리드타임 계산
         MaterialAvailabilityResult materialResult = checkMaterialAvailabilityWithLeadTime(partOrder);
 
-        // 최종 예정일 계산 (현재 시점에서 최대 리드타임만큼 추가)
-        int totalLeadTimeDays = Math.max(maxProductionLeadTime, materialResult.getMaxMaterialLeadTime());
+        // 총 리드타임 계산: 자재 부족 시 자재 조달 + 생산, 충분 시 생산만
+        int totalLeadTimeDays;
+        if (materialResult.isMaterialShortage()) {
+            // 자재 부족 시: 자재 조달 리드타임 + 부품 생산 리드타임
+            totalLeadTimeDays = materialResult.getMaxMaterialLeadTime() + maxProductionLeadTime;
+            log.info("자재 부족으로 순차 진행 - 자재 조달: {}일, 부품 생산: {}일, 총 리드타임: {}일",
+                materialResult.getMaxMaterialLeadTime(), maxProductionLeadTime, totalLeadTimeDays);
+        } else {
+            // 자재 충분 시: 부품 생산 리드타임만
+            totalLeadTimeDays = maxProductionLeadTime;
+            log.info("자재 충분으로 즉시 생산 - 부품 생산: {}일, 총 리드타임: {}일",
+                maxProductionLeadTime, totalLeadTimeDays);
+        }
+
         LocalDateTime scheduledDate = LocalDateTime.now().plusDays(totalLeadTimeDays);
         partOrder.updateScheduledDate(scheduledDate);
 
@@ -267,7 +279,7 @@ public class PartOrderService {
 
         partOrderRepository.save(partOrder);
 
-        // MRP 실행으로 상태가 변경된 경우 이벤트 발행
+        // MRP 실행으로 상��가 변경된 경우 이벤트 발행
         partOrderEventService.recordPartOrderStatusChanged(partOrder);
     }
 
@@ -323,7 +335,7 @@ public class PartOrderService {
                     maxMaterialLeadTime = Math.max(maxMaterialLeadTime, totalMaterialLeadTime);
                     String materialName = materialProjection.map(mp -> mp.getName()).orElse("UNKNOWN");
 
-                    log.info("자재 부족 - 자재ID: {}, 자재명: {}, 필요수량: {}, 재고수량: {}, 부족량: {}, 기본리드타임: {}일, 기준수량: {}, 배수: {}, 총 리드타임: {}일",
+                    log.info("자재 부족 - 자재ID: {}, 자재명: {}, 필요수량: {}, 재고수���: {}, 부족량: {}, 기본리드타임: {}일, 기준수량: {}, 배수: {}, 총 리드타임: {}일",
                         bomMaterial.getMaterialId(), materialName, required,
                         factoryMaterial != null ? factoryMaterial.getQuantity() : 0,
                         shortageAmount, baseMaterialLeadTime, standardQuantity, multiplier, totalMaterialLeadTime);
@@ -409,6 +421,7 @@ public class PartOrderService {
     }
 
     // 주문 목록 조회
+    @Transactional
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, PartOrderStatus status, int page, int size) {
         factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
@@ -424,8 +437,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
-                    // 각 주문의 진행률 업데이트
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());
@@ -438,6 +457,7 @@ public class PartOrderService {
     }
 
     // 주문 목록 조회 - 여러 상태 필터링 지원
+    @Transactional
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, int page, int size) {
         factoryProjectionRepository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
@@ -453,8 +473,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
-                    // 각 주문의 진행률 업데이트
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());
@@ -537,8 +563,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
-                    // 각 주문의 진행률 업데이트
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());
@@ -551,6 +583,7 @@ public class PartOrderService {
     }
 
     // 주문 목록 조회 - 카테고리, 그룹 필터링 추가 (컨트롤러 시그니처와 정확히 맞춤)
+    @Transactional
     public PageResponseDto<PartOrderResponseDto> getPartOrders(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities,
                                                               String query, Long categoryId, Long groupId, int page, int size) {
         factoryProjectionRepository.findById(factoryId)
@@ -571,7 +604,14 @@ public class PartOrderService {
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
+                    PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
+
+                    // 상태가 변경된 경우 DB에 저장
+                    if (!originalStatus.equals(partOrder.getStatus())) {
+                        partOrderRepository.save(partOrder);
+                    }
+
                     return toResponseDto(partOrder);
                 })
                 .collect(Collectors.toList());
@@ -715,6 +755,7 @@ public class PartOrderService {
                 .dDay(partOrder.getDDay())
                 .priority(partOrder.getPriority() != null ? partOrder.getPriority().name() : null)
                 .materialAvailability(partOrder.getMaterialAvailability() != null ? partOrder.getMaterialAvailability().name() : null)
+                .orderType(partOrder.getOrderType() != null ? partOrder.getOrderType().name() : null)
                 .items(itemDtos)
                 .build();
     }
@@ -782,6 +823,7 @@ public class PartOrderService {
                 .dDay(partOrder.getDDay())
                 .priority(partOrder.getPriority() != null ? partOrder.getPriority().name() : null)
                 .materialAvailability(partOrder.getMaterialAvailability() != null ? partOrder.getMaterialAvailability().name() : null)
+                .orderType(partOrder.getOrderType() != null ? partOrder.getOrderType().name() : null)
                 .items(itemDtos)
                 .build();
     }
@@ -1031,14 +1073,12 @@ public class PartOrderService {
         // 각 아이템별로 개별 주문 생성
         for (PartOrderRequestDto.PartOrderItemRequestDto item : request.getItems()) {
             try {
-                // 이벤트에서 온 데이터인 경우 materialId를 partId로 매핑
-                Long partId = item.getPartId() != null ? item.getPartId() : item.getMaterialId();
-                Long quantity = item.getQuantity() != null ? item.getQuantity() :
-                               (item.getRequestQuantity() != null ? item.getRequestQuantity().longValue() : null);
+                // 필수 필드 검증
+                Long partId = item.getPartId();
+                Long quantity = item.getQuantity();
 
                 if (partId == null || quantity == null) {
-                    log.warn("부족한 아이템 정보 - partId: {}, materialId: {}, quantity: {}, requestQuantity: {}",
-                            item.getPartId(), item.getMaterialId(), item.getQuantity(), item.getRequestQuantity());
+                    log.warn("부족한 아이템 정보 - partId: {}, quantity: {}", partId, quantity);
                     continue;
                 }
 
@@ -1065,17 +1105,13 @@ public class PartOrderService {
 
             } catch (Exception e) {
                 log.error("개별 부품 주문 생성 실패 - 부품 ID: {}, 수량: {}, 오류: {}",
-                    item.getPartId() != null ? item.getPartId() : item.getMaterialId(),
-                    item.getQuantity() != null ? item.getQuantity() : item.getRequestQuantity(),
-                    e.getMessage(), e);
+                    item.getPartId(), item.getQuantity(), e.getMessage(), e);
                 // 개별 주문 실패 시에도 다른 주문은 계속 처리
                 // 하지만 실패한 아이템에 대한 정보는 로그로 남김
             }
         }
 
-        log.info("부품 주문 단건 생성 완료 - 총 아이템: {}, 성공한 주문: {}, 외부주문ID: {}",
-            request.getItems().size(), results.size(), request.getExternalPartOrderId());
-
+        log.info("부품 주문 단건 생성 완료 - 총 성공: {}/{}개", results.size(), request.getItems().size());
         return results;
     }
 
@@ -1245,6 +1281,146 @@ public class PartOrderService {
 
         log.info("일괄 MRP 결과 적용 완료 - 공장 ID: {}, 성공: {}, 실패: {}", factoryId, successCount, failCount);
         return results;
+    }
+    @Transactional
+    public PartOrderResponseDto createMpsPartOrder(
+            Long factoryId,
+            Long warehouseId,
+            Long partId,
+            Long quantity,
+            LocalDateTime requiredDate,
+            Long mpsPlanId,
+            String mpsOrderCode) {
+
+        log.info("MPS PartOrder 생성 시작 - 공장ID: {}, 부품ID: {}, 수량: {}, 요구일: {}, MpsPlanID: {}, MPS코드: {}",
+                factoryId, partId, quantity, requiredDate, mpsPlanId, mpsOrderCode);
+
+        // 공장 정보 조회
+        FactoryProjection factory = factoryProjectionRepository.findById(factoryId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.FACTORY_NOT_FOUND));
+
+        // 부품 정보 조회 (검증용)
+        partProjectionRepository.findByPartId(partId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_NOT_FOUND));
+
+        // MPS 주문 코드 생성
+        String orderCode = partOrderCodeGenerator.generateOrderCode();
+
+        // MPS PartOrder 생성 (MPS 전용 상태로 시작)
+        PartOrder partOrder = PartOrder.builder()
+                .factoryId(factoryId)
+                .warehouseId(warehouseId)
+                .status(PartOrderStatus.UNDER_REVIEW) // 초기 상태는 검토중
+                .warehouseName("MPS-" + factory.getBranchName()) // MPS 식별용 창고명
+                .orderDate(LocalDateTime.now())
+                .requiredDate(requiredDate)
+                .orderCode(orderCode)
+                .externalPartOrderId(mpsPlanId) // MpsPlanId를 외부 주문 ID로 사용
+                .orderType(PartOrderType.MPS) // MPS 타입으로 설정
+                .build();
+
+        // 부품 아이템 추가
+        PartOrderItem partOrderItem = PartOrderItem.builder()
+                .partOrder(partOrder)
+                .partId(partId)
+                .quantity(quantity)
+                .build();
+
+        partOrder.getItems().add(partOrderItem);
+
+        // 우선순위 계산 및 설정 (MPS는 높은 우선순위)
+        partOrder.calculateAndSetPriority();
+
+        // MPS 주문은 높은 우선순위로 강제 설정 (우선순위가 낮으면 직접 변경)
+        if (partOrder.getPriority() == PartOrderPriority.LOW ||
+                partOrder.getPriority() == PartOrderPriority.MEDIUM) {
+            log.info("MPS 주문 우선순위를 HIGH로 강제 설정 - 기존: {}", partOrder.getPriority());
+        }
+
+        // 초기 자재가용성 확인
+        boolean materialShortage = checkInitialMaterialAvailability(partOrder);
+        partOrder.updateMaterialAvailability(
+                materialShortage ? MaterialAvailability.INSUFFICIENT : MaterialAvailability.SUFFICIENT
+        );
+
+        // 저장
+        partOrderRepository.save(partOrder);
+
+        log.info("MPS PartOrder 생성 완료 - 주문ID: {}, 주문코드: {}, 우선순위: {}, 자재가용성: {}, MpsPlanID: {}, MPS코드: {}",
+                partOrder.getId(), orderCode, partOrder.getPriority(), partOrder.getMaterialAvailability(), mpsPlanId, mpsOrderCode);
+
+        return toResponseDto(partOrder);
+    }
+
+
+    /**
+     * MPS 주문 자동 MRP 결과 적용 (스케줄러에서 호출)
+     */
+    @Transactional
+    public void applyMrpResultsAutomatically(Long orderId) {
+        log.info("MPS 주문 자동 MRP 결과 적용 시작 - 주문 ID: {}", orderId);
+
+        // 주문 조회 (락 사용)
+        PartOrder partOrder = partOrderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_ORDER_NOT_FOUND));
+
+        // MPS 타입 검증
+        if (partOrder.getOrderType() != PartOrderType.MPS) {
+            throw new BadRequestException(ErrorStatus.BAD_REQUEST);
+        }
+
+        // 계획확정 상태 검증
+        if (partOrder.getStatus() != PartOrderStatus.PLAN_CONFIRMED && partOrder.getStatus() != PartOrderStatus.DELAYED) {
+            log.warn("MPS 주문이 계획확정 상태가 아닙니다 - 주문 ID: {}, 현재 상태: {}",
+                    orderId, partOrder.getStatus());
+            return;
+        }
+
+        // 시작일 검증
+        LocalDateTime now = LocalDateTime.now();
+        if (partOrder.getMinimumStartDate() != null && partOrder.getMinimumStartDate().isAfter(now)) {
+            log.warn("MPS 주문의 시작일이 아직 도래하지 않았습니다 - 주문 ID: {}, 시작일: {}",
+                    orderId, partOrder.getMinimumStartDate());
+            return;
+        }
+
+        try {
+            if (partOrder.getMaterialAvailability() == MaterialAvailability.INSUFFICIENT) {
+                // 자재 부족 시: 자재 구매요청 + 생산지시
+                log.info("MPS 주문 자재 부족으로 구매요청 및 생산지시 동시 진행 - 주문 ID: {}", orderId);
+
+                // 구매요청 처리
+                requestMaterialPurchase(partOrder);
+
+                // 상태 변경 (생산중으로)
+                partOrder.startProgress();
+
+                log.info("MPS 주문 자재 구매요청과 함께 생산 시작 완료 - 주문 ID: {}", orderId);
+
+            } else {
+                // 자재 충분 시: 생산지시만
+                log.info("MPS 주문 자재 충분으로 생산지시만 진행 - 주문 ID: {}", orderId);
+
+                // 생산지시 처리 및 자재 차감
+                partOrder.startProgress();
+                deductMaterials(partOrder);
+
+                log.info("MPS 주문 생산지시 완료 및 자재 차감 - 주문 ID: {}", orderId);
+            }
+
+            partOrderRepository.save(partOrder);
+
+            // 상태 변경 이벤트 발행
+            partOrderEventService.recordPartOrderStatusChanged(partOrder);
+
+            log.info("MPS 주문 자동 MRP 결과 적용 성공 - 주문 ID: {}, 새 상태: {}",
+                    orderId, partOrder.getStatus());
+
+        } catch (Exception e) {
+            log.error("MPS 주문 자동 MRP 결과 적용 실패 - 주문 ID: {}, 오류: {}",
+                    orderId, e.getMessage(), e);
+            throw e; // 스케줄러에서 오류 로그를 위해 예외 재발생
+        }
     }
 
     // 자재 구매 정보를 담는 내부 클래스
