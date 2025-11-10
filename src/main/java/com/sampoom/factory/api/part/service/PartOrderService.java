@@ -14,6 +14,8 @@ import com.sampoom.factory.api.material.repository.MaterialProjectionRepository;
 import com.sampoom.factory.api.part.dto.PartOrderRequestDto;
 import com.sampoom.factory.api.part.dto.PartOrderResponseDto;
 import com.sampoom.factory.api.part.entity.*;
+import com.sampoom.factory.api.part.repository.PartCategoryProjectionRepository;
+import com.sampoom.factory.api.part.repository.PartGroupProjectionRepository;
 import com.sampoom.factory.api.part.repository.PartOrderRepository;
 import com.sampoom.factory.api.part.repository.PartProjectionRepository;
 import com.sampoom.factory.api.purchase.dto.PurchaseRequestDto;
@@ -55,6 +57,8 @@ public class PartOrderService {
     private final PartOrderCodeGenerator partOrderCodeGenerator; // 주문 코드 생성기 추가
     private final BranchFactoryDistanceRepository branchFactoryDistanceRepository; // 거리 정보 Repository 추가
     private final PartOrderEventService partOrderEventService; // 이벤트 서비스 추가
+    private final PartCategoryProjectionRepository partCategoryProjectionRepository; // 카테고리 Repository 추가
+    private final PartGroupProjectionRepository partGroupProjectionRepository; // 그룹 Repository 추가
 
     // 새로운 주문 흐름: 검토중 -> MRP 실행 -> 구매요청/계획확정 -> 진행중 -> 완료
     @Transactional
@@ -585,32 +589,60 @@ public class PartOrderService {
     public PageResponseDto<PartOrderResponseDto> getProductionPlans(Long factoryId, List<PartOrderStatus> statuses, List<PartOrderPriority> priorities,
                                                                   String query, Long categoryId, Long groupId,
                                                                   int page, int size, int includeRecentDays) {
+        // 디버깅 로그 추가
+        log.info("getProductionPlans 호출 - factoryId: {}, statuses: {}, priorities: {}, query: {}, categoryId: {}, groupId: {}, page: {}, size: {}, includeRecentDays: {}",
+            factoryId, statuses, priorities, query, categoryId, groupId, page, size, includeRecentDays);
+
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
 
-        // 상태가 지정되지 않은 경우 기본 생산계획 상태 사용
-        List<PartOrderStatus> planStatuses = (statuses != null && !statuses.isEmpty()) ?
-            statuses :
-            Arrays.asList(
+        // 사용자가 명시적으로 상태를 지정한 경우와 그렇지 않은 경우를 구분
+        boolean userSpecifiedStatus = statuses != null && !statuses.isEmpty();
+        log.info("사용자 지정 상태 여부: {}", userSpecifiedStatus);
+
+        Page<PartOrder> partOrderPage;
+
+        if (userSpecifiedStatus) {
+            // 사용자가 명시적으로 상태를 지정한 경우, previousStatus도 고려한 필터링 사용
+            log.info("사용자 지정 상태로 previousStatus 고려한 필터링 사용: {}", statuses);
+
+            if (StringUtils.hasText(query)) {
+                String searchQuery = "%" + query.trim() + "%";
+                log.info("검색어 포함 previousStatus 고려 쿼리 실행: {}", searchQuery);
+                partOrderPage = partOrderRepository.findByFactoryIdWithFiltersAndSearchIncludingPreviousStatus(
+                    factoryId, statuses, priorities, categoryId, groupId, searchQuery, pageable);
+            } else {
+                log.info("previousStatus 고려한 필터링 쿼리 실행");
+                partOrderPage = partOrderRepository.findByFactoryIdWithFiltersIncludingPreviousStatus(
+                    factoryId, statuses, priorities, categoryId, groupId, pageable);
+            }
+        } else {
+            // 기본 모드에서는 기존 생산계획 로직 사용
+            List<PartOrderStatus> planStatuses = Arrays.asList(
                 PartOrderStatus.UNDER_REVIEW,
                 PartOrderStatus.PLAN_CONFIRMED,
                 PartOrderStatus.DELAYED
             );
+            log.info("기본 생산계획 상태 사용: {}", planStatuses);
 
-        // includeRecentDays가 -1이면 모든 IN_PROGRESS 데이터 포함, 아니면 최근 며칠간만
-        LocalDateTime cutoffDate = includeRecentDays == -1 ?
-            LocalDateTime.of(1900, 1, 1, 0, 0) :  // 아주 오래된 날짜로 설정하여 모든 데이터 포함
-            LocalDateTime.now().minusDays(includeRecentDays);
+            LocalDateTime cutoffDate = includeRecentDays == -1 ?
+                LocalDateTime.of(1900, 1, 1, 0, 0) :
+                LocalDateTime.now().minusDays(includeRecentDays);
+            log.info("기본 모드 cutoffDate 설정: {}, includeRecentDays: {}", cutoffDate, includeRecentDays);
 
-        Page<PartOrder> partOrderPage;
-
-        if (StringUtils.hasText(query)) {
-            String searchQuery = "%" + query.trim() + "%";
-            partOrderPage = partOrderRepository.findProductionPlansWithFiltersAndSearch(
-                factoryId, planStatuses, priorities, categoryId, groupId, searchQuery, cutoffDate, pageable);
-        } else {
-            partOrderPage = partOrderRepository.findProductionPlansWithFilters(
-                factoryId, planStatuses, priorities, categoryId, groupId, cutoffDate, pageable);
+            if (StringUtils.hasText(query)) {
+                String searchQuery = "%" + query.trim() + "%";
+                log.info("검색어 포함 생산계획 쿼리 실행: {}", searchQuery);
+                partOrderPage = partOrderRepository.findProductionPlansWithFiltersAndSearch(
+                    factoryId, planStatuses, priorities, categoryId, groupId, searchQuery, cutoffDate, pageable);
+            } else {
+                log.info("생산계획 쿼리 실행 - planStatuses: {}, cutoffDate: {}", planStatuses, cutoffDate);
+                partOrderPage = partOrderRepository.findProductionPlansWithFilters(
+                    factoryId, planStatuses, priorities, categoryId, groupId, cutoffDate, pageable);
+            }
         }
+
+        log.info("쿼리 결과 - 총 요소 수: {}, 총 페이지: {}, 현재 페이지 요소 수: {}",
+            partOrderPage.getTotalElements(), partOrderPage.getTotalPages(), partOrderPage.getNumberOfElements());
 
         List<PartOrderResponseDto> content = partOrderPage.getContent().stream()
                 .map(partOrder -> {
@@ -632,12 +664,31 @@ public class PartOrderService {
                 .map(item -> {
                     PartProjection part = partProjectionRepository.findByPartId(item.getPartId())
                         .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_NOT_FOUND));
+
+                    // 카테고리 이름 조회
+                    String categoryName = null;
+                    if (part.getCategoryId() != null) {
+                        categoryName = partCategoryProjectionRepository.findByCategoryId(part.getCategoryId())
+                            .map(PartCategoryProjection::getCategoryName)
+                            .orElse(null);
+                    }
+
+                    // 그룹 이름 조회
+                    String groupName = null;
+                    if (part.getGroupId() != null) {
+                        groupName = partGroupProjectionRepository.findByGroupId(part.getGroupId())
+                            .map(PartGroupProjection::getGroupName)
+                            .orElse(null);
+                    }
+
                     return PartOrderResponseDto.PartOrderItemDto.builder()
                         .partId(part.getPartId())
                         .partName(part.getName())
                         .partCode(part.getCode())
                         .partGroup(part.getGroupId() != null ? String.valueOf(part.getGroupId()) : null)
                         .partCategory(part.getCategoryId() != null ? String.valueOf(part.getCategoryId()) : null)
+                        .partGroupName(groupName)
+                        .partCategoryName(categoryName)
                         .quantity(item.getQuantity())
                         .build();
                 })
@@ -674,12 +725,31 @@ public class PartOrderService {
                 .map(item -> {
                     PartProjection part = partProjectionRepository.findByPartId(item.getPartId())
                         .orElseThrow(() -> new NotFoundException(ErrorStatus.PART_NOT_FOUND));
+
+                    // 카테고리 이름 조회
+                    String categoryName = null;
+                    if (part.getCategoryId() != null) {
+                        categoryName = partCategoryProjectionRepository.findByCategoryId(part.getCategoryId())
+                            .map(PartCategoryProjection::getCategoryName)
+                            .orElse(null);
+                    }
+
+                    // 그룹 이름 조회
+                    String groupName = null;
+                    if (part.getGroupId() != null) {
+                        groupName = partGroupProjectionRepository.findByGroupId(part.getGroupId())
+                            .map(PartGroupProjection::getGroupName)
+                            .orElse(null);
+                    }
+
                     return PartOrderResponseDto.PartOrderItemDto.builder()
                         .partId(part.getPartId())
                         .partName(part.getName())
                         .partCode(part.getCode())
                         .partGroup(part.getGroupId() != null ? String.valueOf(part.getGroupId()) : null)
                         .partCategory(part.getCategoryId() != null ? String.valueOf(part.getCategoryId()) : null)
+                        .partGroupName(groupName)
+                        .partCategoryName(categoryName)
                         .quantity(item.getQuantity())
                         .build();
                 })
