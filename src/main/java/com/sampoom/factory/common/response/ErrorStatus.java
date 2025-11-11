@@ -24,6 +24,13 @@ public enum ErrorStatus {
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "유효하지 않은 수량입니다.",40011),
     INSUFFICIENT_MATERIAL_QUANTITY(HttpStatus.BAD_REQUEST, "자재 수량이 부족합니다.",40012),
     NO_AVAILABLE_FACTORY(HttpStatus.BAD_REQUEST, "사용 가능한 공장이 없습니다.",40013),
+    SHORT_PUBLIC_KEY(HttpStatus.BAD_REQUEST, "서명용 공개키의 길이가 짧습니다. 적어도 2048비트 이상으로 설정하세요.", 12401),
+    NULL_BLANK_TOKEN(HttpStatus.BAD_REQUEST, "토큰 값은 Null 또는 공백이면 안됩니다.", 12400),
+    INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "유효하지 않은 입력 값입니다.", 11402),
+    INVALID_ROLE_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 권한(role) 타입입니다.", 11401),
+    BLANK_TOKEN_ROLE(HttpStatus.BAD_REQUEST,"토큰 내 권한 정보가 공백입니다.",12404),
+    NULL_TOKEN_ROLE(HttpStatus.BAD_REQUEST,"토큰 내 권한 정보가 NULL입니다.",12405),
+    INVALID_PUBLIC_KEY(HttpStatus.BAD_REQUEST,"서명용 공개키가 유효하지 않거나 불러오는데 실패했습니다.",12406),
 
 
 
@@ -31,9 +38,16 @@ public enum ErrorStatus {
 
     // 401 UNAUTHORIZED
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.", 40101),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.", 12410),
+    NOT_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED,"토큰의 타입이 액세스 토큰이 아닙니다.",12413),
+    NOT_SERVICE_TOKEN(HttpStatus.UNAUTHORIZED,"토큰의 타입이 서비스 토큰(내부 통신용 토큰)이 아닙니다.",12414),
+    INVALID_TOKEN_ROLE(HttpStatus.UNAUTHORIZED,"유효하지 않은 토큰 내 권한 정보입니다. (토큰 권한 불일치)",12415),
+    EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "만료된 토큰입니다.", 12411),
+
 
     // 403 FORBIDDEN
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.",40301),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN,"접근 권한이 없어 접근이 거부되었습니다.",11430),
 
     // 404 NOT_FOUND
     NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다.",40401),

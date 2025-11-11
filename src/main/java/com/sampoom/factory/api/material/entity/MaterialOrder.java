@@ -1,6 +1,6 @@
 package com.sampoom.factory.api.material.entity;
 
-import com.sampoom.factory.common.entitiy.SoftDeleteEntity;
+import com.sampoom.factory.common.entity.SoftDeleteEntity;
 import com.sampoom.factory.common.exception.BadRequestException;
 import com.sampoom.factory.common.response.ErrorStatus;
 import jakarta.persistence.*;
