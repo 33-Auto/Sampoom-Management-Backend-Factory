@@ -1,5 +1,6 @@
 package com.sampoom.factory.api.mps.service;
 
+import com.sampoom.factory.api.mps.dto.MpsPartInfoDto;
 import com.sampoom.factory.api.mps.entity.Mps;
 import com.sampoom.factory.api.mps.entity.MpsPlan;
 import com.sampoom.factory.api.mps.repository.MpsRepository;
@@ -133,6 +134,19 @@ public class MpsService {
         log.info("MPS 부품 목록 조회 완료 - factoryId: {}, 부품 수: {}", factoryId, partIds.size());
 
         return partIds;
+    }
+
+    /**
+     * 공장에 저장된 MPS의 부품 정보 조회 (ID, 코드, 이름)
+     */
+    public List<MpsPartInfoDto> getMpsPartInfosByFactory(Long factoryId) {
+        log.info("MPS 부품 정보 조회 시작 - factoryId: {}", factoryId);
+
+        List<MpsPartInfoDto> partInfos = mpsRepository.findDistinctPartInfosByFactoryId(factoryId);
+
+        log.info("MPS 부품 정보 조회 완료 - factoryId: {}, 부품 수: {}", factoryId, partInfos.size());
+
+        return partInfos;
     }
 
     /**

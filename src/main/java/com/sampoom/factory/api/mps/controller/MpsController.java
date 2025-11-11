@@ -1,5 +1,6 @@
 package com.sampoom.factory.api.mps.controller;
 
+import com.sampoom.factory.api.mps.dto.MpsPartInfoDto;
 import com.sampoom.factory.api.mps.dto.MpsPlanResponse;
 import com.sampoom.factory.api.mps.dto.MpsResponse;
 import com.sampoom.factory.api.mps.entity.Mps;
@@ -119,18 +120,18 @@ public class MpsController {
         return ApiResponse.success(SuccessStatus.CREATED, partOrders);
     }
 
-    @Operation(summary = "MPS 부품 목록 조회", description = "해당 공장에 저장된 MPS의 모든 부품 ID 목록을 조회합니다.")
+    @Operation(summary = "MPS 부품 정보 조회", description = "해당 공장에 저장된 MPS의 모든 부품 정보(ID, 코드, 이름)를 조회합니다.")
     @GetMapping("/parts")
-    public ResponseEntity<ApiResponse<List<Long>>> getMpsPartList(
+    public ResponseEntity<ApiResponse<List<MpsPartInfoDto>>> getMpsPartInfos(
             @Parameter(description = "공장 ID", required = true) @PathVariable Long factoryId) {
 
-        log.info("MPS 부품 목록 조회 요청 - factoryId: {}", factoryId);
+        log.info("MPS 부품 정보 조회 요청 - factoryId: {}", factoryId);
 
-        List<Long> partIds = mpsService.getMpsPartListByFactory(factoryId);
+        List<MpsPartInfoDto> partInfos = mpsService.getMpsPartInfosByFactory(factoryId);
 
-        log.info("MPS 부품 목록 조회 성공 - factoryId: {}, 부품 수: {}", factoryId, partIds.size());
+        log.info("MPS 부품 정보 조회 성공 - factoryId: {}, 부품 수: {}", factoryId, partInfos.size());
 
-        return ApiResponse.success(SuccessStatus.OK, partIds);
+        return ApiResponse.success(SuccessStatus.OK, partInfos);
     }
 
     @Operation(summary = "특정 부품의 예측 달 조회", description = "특정 부품 ID에 대한 모든 예측 달(targetDate) 목록을 조회합니다.")
