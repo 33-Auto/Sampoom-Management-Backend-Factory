@@ -1,5 +1,6 @@
 package com.sampoom.factory.api.mps.repository;
 
+import com.sampoom.factory.api.mps.dto.MpsPartInfoDto;
 import com.sampoom.factory.api.mps.entity.Mps;
 import com.sampoom.factory.api.mps.entity.MpsStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -53,4 +54,12 @@ public interface MpsRepository extends JpaRepository<Mps, Long> {
     // 특정 부품 ID에 대한 모든 예측 달(targetDate) 목록 조회 (중복 제거, 정렬)
     @Query("SELECT DISTINCT m.targetDate FROM Mps m WHERE m.factoryId = :factoryId AND m.partId = :partId ORDER BY m.targetDate")
     List<LocalDate> findDistinctTargetDatesByFactoryIdAndPartId(@Param("factoryId") Long factoryId, @Param("partId") Long partId);
+
+    // 공장에 저장된 MPS의 부품 정보 조회 (중복 제거, part 테이블과 조인)
+    @Query("SELECT new com.sampoom.factory.api.mps.dto.MpsPartInfoDto(p.partId, p.code, p.name) " +
+           "FROM Mps m JOIN PartProjection p ON m.partId = p.partId " +
+           "WHERE m.factoryId = :factoryId " +
+           "GROUP BY p.partId, p.code, p.name " +
+           "ORDER BY p.partId")
+    List<MpsPartInfoDto> findDistinctPartInfosByFactoryId(@Param("factoryId") Long factoryId);
 }
