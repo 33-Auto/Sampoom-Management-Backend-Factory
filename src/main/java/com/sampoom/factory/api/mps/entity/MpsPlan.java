@@ -1,6 +1,6 @@
 package com.sampoom.factory.api.mps.entity;
 
-import com.sampoom.factory.common.entitiy.SoftDeleteEntity;
+import com.sampoom.factory.common.entity.SoftDeleteEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
