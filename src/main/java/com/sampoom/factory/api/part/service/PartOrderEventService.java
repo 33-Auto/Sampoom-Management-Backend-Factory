@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sampoom.factory.api.factory.outbox.FactoryOutbox;
 import com.sampoom.factory.api.factory.outbox.FactoryOutboxRepository;
 import com.sampoom.factory.api.part.entity.PartOrder;
+import com.sampoom.factory.api.part.entity.PartOrderType;
 import com.sampoom.factory.api.part.event.PartOrderEvent;
 import com.sampoom.factory.api.part.repository.PartProjectionRepository;
 import com.sampoom.factory.api.factory.repository.FactoryProjectionRepository;
@@ -32,26 +33,52 @@ public class PartOrderEventService {
 
     @Transactional
     public void recordPartOrderCreated(PartOrder partOrder) {
-        log.info("부품 주문 생성 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
-        enqueueEvent("PartOrderCreated", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        // MPS 타입인 경우 별도 이벤트 타입 사용
+        if (partOrder.getOrderType() == PartOrderType.MPS) {
+            log.info("MPS 주문 생성 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
+            enqueueEvent("MpsCreated", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        } else {
+            log.info("부품 주문 생성 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
+            enqueueEvent("PartOrderCreated", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        }
     }
 
     @Transactional
     public void recordPartOrderStatusChanged(PartOrder partOrder) {
-        log.info("부품 주문 상태 변경 이벤트 발행 - 주문 ID: {}, 상태: {}", partOrder.getId(), partOrder.getStatus());
-        enqueueEvent("PartOrderStatusChanged", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        // MPS 타입인 경우 별도 이벤트 타입 사용
+        if (partOrder.getOrderType() == PartOrderType.MPS) {
+            log.info("MPS 주문 상태 변경 이벤트 발행 - 주문 ID: {}, 상태: {}", partOrder.getId(), partOrder.getStatus());
+            enqueueEvent("MpsStatusChanged", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        } else {
+            log.info("부품 주문 상태 변경 이벤트 발행 - 주문 ID: {}, 상태: {}", partOrder.getId(), partOrder.getStatus());
+            enqueueEvent("PartOrderStatusChanged", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        }
     }
 
     @Transactional
     public void recordPartOrderCompleted(PartOrder partOrder) {
-        log.info("부품 주문 완료 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
-        enqueueEvent("PartOrderCompleted", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        // MPS 타입인 경우 별도 이벤트 타입 사용
+        if (partOrder.getOrderType() == PartOrderType.MPS) {
+            log.info("MPS 주문 완료 이벤트 발행 - 주문 ID: {}, 주문 코드: {}, orderType: {}",
+                partOrder.getId(), partOrder.getOrderCode(), partOrder.getOrderType());
+            enqueueEvent("MpsCompleted", partOrder, nvl(partOrder.getVersion(), 0L), false);
+            log.info("MPS 주문 완료 이벤트 OUTBOX 저장 완료 - 주문 ID: {}, eventType: MpsCompleted", partOrder.getId());
+        } else {
+            log.info("부품 주문 완료 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
+            enqueueEvent("PartOrderCompleted", partOrder, nvl(partOrder.getVersion(), 0L), false);
+        }
     }
 
     @Transactional
     public void recordPartOrderDeleted(PartOrder partOrder) {
-        log.info("부품 주문 삭제 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
-        enqueueEvent("PartOrderDeleted", partOrder, nvl(partOrder.getVersion(), 0L), true);
+        // MPS 타입인 경우 별도 이벤트 타입 사용
+        if (partOrder.getOrderType() == PartOrderType.MPS) {
+            log.info("MPS 주문 삭제 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
+            enqueueEvent("MpsDeleted", partOrder, nvl(partOrder.getVersion(), 0L), true);
+        } else {
+            log.info("부품 주문 삭제 이벤트 발행 - 주문 ID: {}, 주문 코드: {}", partOrder.getId(), partOrder.getOrderCode());
+            enqueueEvent("PartOrderDeleted", partOrder, nvl(partOrder.getVersion(), 0L), true);
+        }
     }
 
     // ===== 공통 헬퍼 =====

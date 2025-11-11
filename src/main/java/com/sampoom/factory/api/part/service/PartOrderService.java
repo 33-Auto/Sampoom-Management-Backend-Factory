@@ -440,9 +440,15 @@ public class PartOrderService {
                     PartOrderStatus originalStatus = partOrder.getStatus();
                     partOrder.calculateProgressByDate();
 
-                    // 상태가 변경된 경우 DB에 저장
+                    // 상태가 변경된 경우 DB에 저장하고 이벤트 발행
                     if (!originalStatus.equals(partOrder.getStatus())) {
                         partOrderRepository.save(partOrder);
+
+                        // IN_PROGRESS에서 COMPLETED로 변경된 경우 완료 이벤트 발행
+                        if (originalStatus == PartOrderStatus.IN_PROGRESS &&
+                            partOrder.getStatus() == PartOrderStatus.COMPLETED) {
+                            partOrderEventService.recordPartOrderCompleted(partOrder);
+                        }
                     }
 
                     return toResponseDto(partOrder);
