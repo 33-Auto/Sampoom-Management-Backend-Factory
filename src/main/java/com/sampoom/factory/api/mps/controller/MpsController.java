@@ -118,4 +118,34 @@ public class MpsController {
 
         return ApiResponse.success(SuccessStatus.CREATED, partOrders);
     }
+
+    @Operation(summary = "MPS 부품 목록 조회", description = "해당 공장에 저장된 MPS의 모든 부품 ID 목록을 조회합니다.")
+    @GetMapping("/parts")
+    public ResponseEntity<ApiResponse<List<Long>>> getMpsPartList(
+            @Parameter(description = "공장 ID", required = true) @PathVariable Long factoryId) {
+
+        log.info("MPS 부품 목록 조회 요청 - factoryId: {}", factoryId);
+
+        List<Long> partIds = mpsService.getMpsPartListByFactory(factoryId);
+
+        log.info("MPS 부품 목록 조회 성공 - factoryId: {}, 부품 수: {}", factoryId, partIds.size());
+
+        return ApiResponse.success(SuccessStatus.OK, partIds);
+    }
+
+    @Operation(summary = "특정 부품의 예측 달 조회", description = "특정 부품 ID에 대한 모든 예측 달(targetDate) 목록을 조회합니다.")
+    @GetMapping("/parts/{partId}/forecast-months")
+    public ResponseEntity<ApiResponse<List<LocalDate>>> getPartForecastMonths(
+            @Parameter(description = "공장 ID", required = true) @PathVariable Long factoryId,
+            @Parameter(description = "부품 ID", required = true) @PathVariable Long partId) {
+
+        log.info("부품 예측 달 조회 요청 - factoryId: {}, partId: {}", factoryId, partId);
+
+        List<LocalDate> forecastMonths = mpsService.getForecastMonthsByFactoryAndPart(factoryId, partId);
+
+        log.info("부품 예측 달 조회 성공 - factoryId: {}, partId: {}, 예측 달 수: {}",
+                factoryId, partId, forecastMonths.size());
+
+        return ApiResponse.success(SuccessStatus.OK, forecastMonths);
+    }
 }

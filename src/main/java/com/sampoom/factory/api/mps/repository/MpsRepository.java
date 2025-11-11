@@ -45,5 +45,12 @@ public interface MpsRepository extends JpaRepository<Mps, Long> {
     // 시작일이 특정 날짜 이전인 MPS 조회 (긴급 생산 필요)
     @Query("SELECT m FROM Mps m WHERE m.startDate <= :date AND m.status = :status")
     List<Mps> findUrgentMps(@Param("date") LocalDate date, @Param("status") MpsStatus status);
-}
 
+    // 공장에 저장된 MPS의 모든 부품 ID 목록 조회 (중복 제거)
+    @Query("SELECT DISTINCT m.partId FROM Mps m WHERE m.factoryId = :factoryId ORDER BY m.partId")
+    List<Long> findDistinctPartIdsByFactoryId(@Param("factoryId") Long factoryId);
+
+    // 특정 부품 ID에 대한 모든 예측 달(targetDate) 목록 조회 (중복 제거, 정렬)
+    @Query("SELECT DISTINCT m.targetDate FROM Mps m WHERE m.factoryId = :factoryId AND m.partId = :partId ORDER BY m.targetDate")
+    List<LocalDate> findDistinctTargetDatesByFactoryIdAndPartId(@Param("factoryId") Long factoryId, @Param("partId") Long partId);
+}
