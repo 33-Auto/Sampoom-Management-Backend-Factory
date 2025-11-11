@@ -122,5 +122,31 @@ public class MpsService {
         return partOrderResponses;
     }
 
+    /**
+     * 공장에 저장된 MPS의 모든 부품 ID 목록 조회
+     */
+    public List<Long> getMpsPartListByFactory(Long factoryId) {
+        log.info("MPS 부품 목록 조회 시작 - factoryId: {}", factoryId);
+
+        List<Long> partIds = mpsRepository.findDistinctPartIdsByFactoryId(factoryId);
+
+        log.info("MPS 부품 목록 조회 완료 - factoryId: {}, 부품 수: {}", factoryId, partIds.size());
+
+        return partIds;
+    }
+
+    /**
+     * 특정 부품 ID에 대한 모든 예측 달(targetDate) 목록 조회
+     */
+    public List<LocalDate> getForecastMonthsByFactoryAndPart(Long factoryId, Long partId) {
+        log.info("부품 예측 달 조회 시작 - factoryId: {}, partId: {}", factoryId, partId);
+
+        List<LocalDate> forecastMonths = mpsRepository.findDistinctTargetDatesByFactoryIdAndPartId(factoryId, partId);
+
+        log.info("부품 예측 달 조회 완료 - factoryId: {}, partId: {}, 예측 달 수: {}",
+                factoryId, partId, forecastMonths.size());
+
+        return forecastMonths;
+    }
 
 }
