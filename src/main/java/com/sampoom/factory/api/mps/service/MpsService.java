@@ -155,7 +155,14 @@ public class MpsService {
     public List<LocalDate> getForecastMonthsByFactoryAndPart(Long factoryId, Long partId) {
         log.info("부품 예측 달 조회 시작 - factoryId: {}, partId: {}", factoryId, partId);
 
-        List<LocalDate> forecastMonths = mpsRepository.findDistinctTargetDatesByFactoryIdAndPartId(factoryId, partId);
+        List<LocalDate> targetDates = mpsRepository.findDistinctTargetDatesByFactoryIdAndPartId(factoryId, partId);
+
+        // targetDate는 예측달의 전달 마지막날이므로, 예측달을 반환하기 위해 1개월 더함
+        List<LocalDate> forecastMonths = targetDates.stream()
+                .map(targetDate -> targetDate.plusMonths(1))
+                .distinct()
+                .sorted()
+                .collect(java.util.stream.Collectors.toList());
 
         log.info("부품 예측 달 조회 완료 - factoryId: {}, partId: {}, 예측 달 수: {}",
                 factoryId, partId, forecastMonths.size());
